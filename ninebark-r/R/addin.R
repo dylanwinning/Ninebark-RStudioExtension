@@ -89,17 +89,25 @@ nb_addin_ui <- function() {
     )
   )
 
+  # gadgetTitleBar() wraps its title in <h1>. miniUI's own h1 rule already
+  # makes it position:absolute, top/right/bottom/left:0 (fills the whole
+  # bar) with text-align:center -- so overriding display to flex WITHOUT
+  # also setting justify-content:center (a mistake in an earlier version of
+  # this file) drops that centering and left-aligns the logo+wordmark
+  # instead, which then sits directly under the title bar's left button.
+  # justify-content is what actually centers it here; align-items centers
+  # it vertically the same way miniUI's own line-height:44px did for plain
+  # text.
+  ninebark_head_css <- "
+    #nb_log { background:#f7f7f7; border-radius:4px; padding:8px;
+      font-family:monospace; font-size:12px; white-space:pre-wrap;
+      overflow-y:auto; height:100%; }
+    .gadget-title { border-bottom: 2px solid #2f7a4f; }
+    .gadget-title h1 { margin: 0; display: flex; align-items: center; justify-content: center; }
+  "
+
   miniUI::miniPage(
-    shiny::tags$head(shiny::tags$style(shiny::HTML(
-      "#nb_log { background:#f7f7f7; border-radius:4px; padding:8px;
-       font-family:monospace; font-size:12px; white-space:pre-wrap;
-       overflow-y:auto; height:100%; }
-       /* gadgetTitleBar wraps its title in <h1>; reset that so the logo +
-          wordmark sit inline at their own size instead of h1-sized/spaced,
-          and give the whole bar the same green accent as the extension. */
-       .gadget-title { border-bottom: 2px solid #2f7a4f; }
-       .gadget-title h1 { margin: 0; display: flex; align-items: center; }"
-    ))),
+    shiny::tags$head(shiny::tags$style(shiny::HTML(ninebark_head_css))),
     shiny::tags$script(shiny::HTML(
       "document.addEventListener('keydown', function(e) {
          if (e.key === 'Enter' && e.target && e.target.id === 'nb_input') {
@@ -108,8 +116,15 @@ nb_addin_ui <- function() {
          }
        });"
     )),
+    # left = NULL suppresses gadgetTitleBar()'s DEFAULT left-side button
+    # (miniTitleBarCancelButton(), a "Cancel" wired to input$cancel) -- this
+    # gadget only ever had one dismiss action (the "Close" button below,
+    # wired to input$done), so the default Cancel button was both visually
+    # colliding with the centered wordmark and functionally dead (nothing in
+    # server() below ever observed input$cancel).
     miniUI::gadgetTitleBar(
       branded_title,
+      left = NULL,
       right = miniUI::miniTitleBarButton("done", "Close", primary = TRUE)
     ),
     miniUI::miniContentPanel(

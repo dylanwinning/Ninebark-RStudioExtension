@@ -32,3 +32,22 @@ test_that("the input box and Run button are present with the ids the Enter-key h
   expect_match(html, 'id="nb_input"', fixed = TRUE)
   expect_match(html, 'id="nb_run"', fixed = TRUE)
 })
+
+test_that("the title bar centers its content and has no leftover default Cancel button", {
+  # Regression test: an earlier version overrode the title <h1>'s display to
+  # flex without justify-content:center, which un-did miniUI's own centering
+  # and left-aligned the logo+wordmark directly under gadgetTitleBar()'s
+  # DEFAULT left-side Cancel button (which this file never wired to
+  # anything, since the gadget only has one dismiss action). Both are fixed
+  # by setting left = NULL on gadgetTitleBar() and adding
+  # justify-content:center back to the h1 override -- this pins both.
+  ui <- ninebark:::nb_addin_ui()
+  rendered <- htmltools::renderTags(ui)
+  # tags$head(tags$style(...)) is hoisted into renderTags()$head, not
+  # $html -- it doesn't render inline in the body, so the CSS assertion has
+  # to look there, not in the body markup the other tests in this file check.
+  head <- as.character(rendered$head)
+  body <- as.character(rendered$html)
+  expect_match(head, "justify-content: center", fixed = TRUE)
+  expect_no_match(body, "cancel", ignore.case = TRUE)
+})
