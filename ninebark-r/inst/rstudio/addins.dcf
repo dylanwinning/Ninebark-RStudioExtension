@@ -1,0 +1,4 @@
+Name: Ninebark
+Description: Type an R command in plain English; run it in the Console or insert it into the Source editor.
+Binding: ninebark_addin
+Interactive: true

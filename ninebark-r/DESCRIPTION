@@ -1,0 +1,28 @@
+Package: ninebark
+Title: Type R Commands in Plain English, Right in RStudio
+Version: 0.1.0
+Authors@R: person("Dylan", "Winning", email = "dwinning@haverford.edu", role = c("aut", "cre"))
+Description: An RStudio Addin that turns a plain-English phrase ("mean of
+    1,2,3,4,5", "let x be 5", "read the csv file data.csv into df", "for i
+    in 1 to 10 print i") into real R and either runs it in the live Console
+    or inserts it into the open Source file. Works identically in RStudio
+    Desktop, RStudio Server, Posit Workbench, and Posit Cloud, because it
+    talks to the editor only through the official 'rstudioapi' package, not
+    by reaching into any one frontend's internals. The natural-language
+    resolution itself is the same engine as the Ninebark browser extensions
+    for Desmos, Google Sheets, Excel, MATLAB Online, and Overleaf, embedded
+    here via the 'V8' package so it runs locally with no network calls and
+    no server-side component.
+License: MIT + file LICENSE
+Encoding: UTF-8
+RoxygenNote: 7.3.2
+URL: https://github.com/dylanwinning/Ninebark-RStudioExtension
+BugReports: https://github.com/dylanwinning/Ninebark-RStudioExtension/issues
+Imports:
+    V8,
+    rstudioapi,
+    shiny,
+    miniUI
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

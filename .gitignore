@@ -1,0 +1,18 @@
+# Secrets — never commit. Copy .env.example to .env locally.
+.env
+.env.local
+.env.*.local
+
+node_modules
+extension/dist
+tsconfig.tsbuildinfo
+
+# R CMD build/check artifacts (ninebark-r/) — NOT ninebark-r/inst/js/*.js,
+# which is a committed, tracked file (the R package has no build step at
+# install time, so the JS bundle has to already be there — see
+# ninebark-r/README.md).
+*.Rcheck/
+ninebark_*.tar.gz
+.Rhistory
+.RData
+.Rproj.user
