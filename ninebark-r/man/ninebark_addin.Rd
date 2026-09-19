@@ -8,11 +8,12 @@
 ninebark_addin()
 }
 \description{
-Opens a small dialog: type a plain-English R command, press Run (or
-Enter), and it's run in the live Console or inserted into the open Source
-file — see \code{\link{ninebark_resolve}} for the resolution contract this
-wraps. Registered as an RStudio Addin (Addins menu, or bind it to a
-keyboard shortcut via Tools > Modify Keyboard Shortcuts > search
-"Ninebark") by \code{inst/rstudio/addins.dcf} — this function is not
-usually called directly, though nothing stops you.
+Opens a small panel in RStudio's Viewer pane (bottom-right by default):
+type a plain-English R command, press Run (or Enter), and it's run in the
+live Console or inserted into the open Source file — see
+\code{\link{ninebark_resolve}} for the resolution contract this wraps.
+Registered as an RStudio Addin (Addins menu, or bind it to a keyboard
+shortcut via Tools > Modify Keyboard Shortcuts > search "Ninebark") by
+\code{inst/rstudio/addins.dcf} — this function is not usually called
+directly, though nothing stops you.
 }

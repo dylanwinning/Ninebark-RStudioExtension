@@ -58,31 +58,47 @@ nb_run_one <- function(raw_text) {
   nb_log_entry(text, outcome)
 }
 
-#' Launch the Ninebark Addin
-#'
-#' Opens a small dialog: type a plain-English R command, press Run (or
-#' Enter), and it's run in the live Console or inserted into the open
-#' Source file -- see [ninebark_resolve()] for the resolution contract this
-#' wraps. Registered as an RStudio Addin (Addins menu, or bind it to a
-#' keyboard shortcut via Tools > Modify Keyboard Shortcuts > search
-#' "Ninebark") by `inst/rstudio/addins.dcf` -- this function is not usually
-#' called directly, though nothing stops you.
-#'
-#' @export
-ninebark_addin <- function() {
-  if (!rstudioapi::isAvailable()) {
-    stop(
-      "ninebark_addin() needs to run inside RStudio (Desktop, Server, Workbench, or Cloud) ",
-      "so it can reach the Console/Source editor via rstudioapi.",
-      call. = FALSE
-    )
-  }
+# Builds the gadget's UI, separated out from ninebark_addin() itself so it
+# can be constructed and inspected (see tests/testthat/test-addin-ui.R)
+# without also calling the blocking shiny::runGadget() below it -- there's
+# no way to unit-test a function that opens an interactive gadget and waits
+# for it to close, but the UI it's built from is just an htmltools tag tree,
+# and that part IS testable. Not exported -- an implementation detail of
+# ninebark_addin(), below.
+nb_addin_ui <- function() {
+  # Serves inst/www/ninebark-icon.png at /ninebark-assets/ninebark-icon.png
+  # for the branded title bar below. A resource path, not a base64 data URI
+  # baked into the R source (the Chrome extension inlines its logo as a data
+  # URI instead -- see vite.config.ts's assetsInlineLimit comment -- because
+  # a Chrome extension has no server to serve a separate file from; a running
+  # Shiny gadget IS one, so the ordinary Shiny way to serve a static asset is
+  # the better fit here).
+  shiny::addResourcePath("ninebark-assets", system.file("www", package = "ninebark"))
 
-  ui <- miniUI::miniPage(
+  # The Chrome extension's own header markup (extension/src/shared/widget.ts)
+  # is "<img 20x20> <span class=nb-word>Ninebark</span>", weight 700, 13.5px,
+  # color #1f2a24 -- reproduced here so the two feel like the same product.
+  branded_title <- shiny::tagList(
+    shiny::tags$img(
+      src = "ninebark-assets/ninebark-icon.png", alt = "",
+      style = "width:20px; height:20px; display:block; margin-right:6px;"
+    ),
+    shiny::tags$span(
+      "Ninebark",
+      style = "font-weight:700; font-size:13.5px; color:#1f2a24;"
+    )
+  )
+
+  miniUI::miniPage(
     shiny::tags$head(shiny::tags$style(shiny::HTML(
       "#nb_log { background:#f7f7f7; border-radius:4px; padding:8px;
        font-family:monospace; font-size:12px; white-space:pre-wrap;
-       overflow-y:auto; height:100%; }"
+       overflow-y:auto; height:100%; }
+       /* gadgetTitleBar wraps its title in <h1>; reset that so the logo +
+          wordmark sit inline at their own size instead of h1-sized/spaced,
+          and give the whole bar the same green accent as the extension. */
+       .gadget-title { border-bottom: 2px solid #2f7a4f; }
+       .gadget-title h1 { margin: 0; display: flex; align-items: center; }"
     ))),
     shiny::tags$script(shiny::HTML(
       "document.addEventListener('keydown', function(e) {
@@ -93,7 +109,7 @@ ninebark_addin <- function() {
        });"
     )),
     miniUI::gadgetTitleBar(
-      "Ninebark",
+      branded_title,
       right = miniUI::miniTitleBarButton("done", "Close", primary = TRUE)
     ),
     miniUI::miniContentPanel(
@@ -109,6 +125,30 @@ ninebark_addin <- function() {
       padding = 10
     )
   )
+}
+
+#' Launch the Ninebark Addin
+#'
+#' Opens a small panel in RStudio's Viewer pane (bottom-right by default):
+#' type a plain-English R command, press Run (or Enter), and it's run in the
+#' live Console or inserted into the open Source file -- see
+#' [ninebark_resolve()] for the resolution contract this wraps. Registered
+#' as an RStudio Addin (Addins menu, or bind it to a keyboard shortcut via
+#' Tools > Modify Keyboard Shortcuts > search "Ninebark") by
+#' `inst/rstudio/addins.dcf` -- this function is not usually called
+#' directly, though nothing stops you.
+#'
+#' @export
+ninebark_addin <- function() {
+  if (!rstudioapi::isAvailable()) {
+    stop(
+      "ninebark_addin() needs to run inside RStudio (Desktop, Server, Workbench, or Cloud) ",
+      "so it can reach the Console/Source editor via rstudioapi.",
+      call. = FALSE
+    )
+  }
+
+  ui <- nb_addin_ui()
 
   server <- function(input, output, session) {
     log_entries <- shiny::reactiveVal(character(0))
@@ -126,5 +166,14 @@ ninebark_addin <- function() {
     shiny::observeEvent(input$done, shiny::stopApp())
   }
 
-  shiny::runGadget(ui, server, viewer = shiny::dialogViewer("Ninebark", width = 640, height = 520))
+  # paneViewer(), not dialogViewer(): docks the gadget into RStudio's Viewer
+  # pane instead of opening a big centered modal. In RStudio's default
+  # 4-pane layout the Viewer pane sits bottom-right (grouped with Plots/
+  # Files/Packages/Help) -- this is the real, documented RStudio Addin
+  # viewer option for "small and tucked in a corner" rather than "takes over
+  # the middle of the screen"; there's no Addin API for floating a
+  # borderless widget over an arbitrary screen position the way the Chrome
+  # extension's overlay can. minHeight is left NULL (use whatever size the
+  # pane already is) rather than forcing a resize, to stay out of the way.
+  shiny::runGadget(ui, server, viewer = shiny::paneViewer(minHeight = NULL))
 }
