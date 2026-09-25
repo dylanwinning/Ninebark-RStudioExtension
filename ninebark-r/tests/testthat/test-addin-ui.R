@@ -51,3 +51,19 @@ test_that("the title bar centers its content and has no leftover default Cancel 
   expect_match(head, "justify-content: center", fixed = TRUE)
   expect_no_match(body, "cancel", ignore.case = TRUE)
 })
+
+test_that("the Auto-run toggle is present, defaulting to checked", {
+  ui <- ninebark:::nb_addin_ui()
+  html <- as.character(htmltools::renderTags(ui)$html)
+  expect_match(html, 'id="nb_auto"', fixed = TRUE)
+  expect_match(html, 'type="checkbox"', fixed = TRUE)
+  # Confirms the DEFAULT is auto-run (this addin's original, pre-toggle
+  # behavior) rather than the toggle silently flipping that default.
+  expect_match(html, 'checked="checked"', fixed = TRUE)
+})
+
+test_that("the Resolved R output placeholder is present for the server to render into", {
+  ui <- ninebark:::nb_addin_ui()
+  html <- as.character(htmltools::renderTags(ui)$html)
+  expect_match(html, 'id="nb_resolved"', fixed = TRUE)
+})

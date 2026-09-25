@@ -1,14 +1,16 @@
 # The RStudio Addin -- a small gadget dialog (miniUI + shiny, RStudio's own
 # recommended pattern for an Addin with interactive input) registered by
 # inst/rstudio/addins.dcf. Type a phrase, hit Run (or press Enter); it's
-# resolved via ninebark_resolve() (R/resolve.R) and dispatched through
-# rstudioapi -- sendToConsole() for the Console target (real evaluation, real
-# output, same posture as the Chrome extension's live-eval model), or
-# insertText() into the active Source document for the Source target
-# ("in the script ...", inserted unexecuted). rstudioapi is the one and only
-# thing this file touches to reach the editor, which is exactly why this
-# works identically in RStudio Desktop, Server, Workbench, and Cloud -- no
-# per-frontend branching anywhere in this file.
+# resolved via ninebark_resolve() (R/resolve.R), then EITHER dispatched
+# through rstudioapi -- sendToConsole() for the Console target (real
+# evaluation, real output, same posture as the Chrome extension's live-eval
+# model), or insertText() into the active Source document for the Source
+# target ("in the script ...", inserted unexecuted) -- OR, when the
+# "Auto-run in RStudio" toggle is off, just shown in a copyable box so the
+# user pastes and runs it themselves. rstudioapi is the one and only thing
+# this file touches to reach the editor (in auto-run mode), which is
+# exactly why this works identically in RStudio Desktop, Server, Workbench,
+# and Cloud -- no per-frontend branching anywhere in this file.
 
 nb_log_entry <- function(input_text, outcome_text) {
   # -> / - (an arrow, a horizontal rule) rather than the literal
@@ -20,7 +22,9 @@ nb_log_entry <- function(input_text, outcome_text) {
 nb_dispatch <- function(result) {
   # result$ok is TRUE here (checked by the caller) -- this only decides
   # WHERE the resolved code goes and reports back what happened, mirroring
-  # dispatchRCommand() in the TypeScript engine's rExecClient.ts.
+  # dispatchRCommand() in the TypeScript engine's rExecClient.ts. Only
+  # called when the "Auto-run in RStudio" toggle is on -- see
+  # nb_manual_outcome() for the off case, which never touches rstudioapi.
   if (identical(result$target, "console")) {
     rstudioapi::sendToConsole(result$code, execute = TRUE, echo = TRUE, focus = FALSE)
     return(sprintf("ran in the Console:  %s", result$code))
@@ -38,7 +42,23 @@ nb_dispatch <- function(result) {
   sprintf("inserted into %s:  %s", label, result$code)
 }
 
-nb_run_one <- function(raw_text) {
+# The "Auto-run in RStudio" toggle is off: resolve, but never call
+# rstudioapi at all -- the resolved code is shown in the "Resolved R" box
+# (nb_addin_ui()'s uiOutput("nb_resolved")) for the user to copy and paste
+# themselves, whichever target it's headed for. This function only builds
+# the log message; nb_run_one() is what skips calling nb_dispatch().
+nb_manual_outcome <- function(result) {
+  where <- if (identical(result$target, "console")) "the Console" else "the Source editor"
+  sprintf("resolved for %s -- copy it from the box above and paste it in yourself:  %s", where, result$code)
+}
+
+# Returns list(entry = <one log block, always>, code = <the resolved R, or
+# NULL when resolution failed>) -- NULL text input is skipped entirely
+# (returns NULL), same as before. `code` lets the caller update the
+# "Resolved R" copy box regardless of whether auto-run dispatched it or the
+# user is going to paste it themselves -- useful either way, so it's
+# populated in both modes, not just when auto-run is off.
+nb_run_one <- function(raw_text, auto) {
   text <- trimws(raw_text)
   if (!nzchar(text)) return(NULL)
 
@@ -48,14 +68,19 @@ nb_run_one <- function(raw_text) {
   )
 
   if (isTRUE(result$ok)) {
-    outcome <- tryCatch(
-      nb_dispatch(result),
-      error = function(e) sprintf("resolved but couldn't dispatch (%s):  %s", conditionMessage(e), result$code)
-    )
+    outcome <- if (isTRUE(auto)) {
+      tryCatch(
+        nb_dispatch(result),
+        error = function(e) sprintf("resolved but couldn't dispatch (%s):  %s", conditionMessage(e), result$code)
+      )
+    } else {
+      nb_manual_outcome(result)
+    }
+    list(entry = nb_log_entry(text, outcome), code = result$code)
   } else {
     outcome <- if (is.null(result$error)) "unrecognized command" else result$error
+    list(entry = nb_log_entry(text, outcome), code = NULL)
   }
-  nb_log_entry(text, outcome)
 }
 
 # Builds the gadget's UI, separated out from ninebark_addin() itself so it
@@ -104,6 +129,11 @@ nb_addin_ui <- function() {
       overflow-y:auto; height:100%; }
     .gadget-title { border-bottom: 2px solid #2f7a4f; }
     .gadget-title h1 { margin: 0; display: flex; align-items: center; justify-content: center; }
+    #nb_auto { margin: 6px 0; font-size: 12px; }
+    .nb-resolved-label { font-size: 11px; color: #5b675f; display: block; margin: 4px 0 2px; }
+    .nb-resolved-box { width: 100%; font-family: monospace; font-size: 12px; padding: 6px 8px;
+      border: 1px solid #dde3df; border-radius: 4px; background: #fafaf8; color: #1f2a24; }
+    .nb-resolved-box:focus { outline: none; border-color: #2f7a4f; box-shadow: 0 0 0 3px #e8f5ec; }
   "
 
   miniUI::miniPage(
@@ -129,12 +159,21 @@ nb_addin_ui <- function() {
     ),
     miniUI::miniContentPanel(
       shiny::fillCol(
-        flex = c(NA, 1),
+        flex = c(NA, NA, NA, 1),
         shiny::fillRow(
           flex = c(1, NA),
           shiny::textInput("nb_input", label = NULL, placeholder = "mean of 1,2,3,4,5", width = "100%"),
           shiny::actionButton("nb_run", "Run", class = "btn-primary", style = "margin-left:8px;")
         ),
+        # Default TRUE: preserves this addin's original behavior (resolve
+        # AND run/insert immediately) unless someone explicitly opts into
+        # the paste-it-yourself mode instead.
+        shiny::checkboxInput(
+          "nb_auto",
+          "Auto-run in RStudio (off: show the R below to copy and paste in yourself)",
+          value = TRUE
+        ),
+        shiny::uiOutput("nb_resolved"),
         shiny::uiOutput("nb_log")
       ),
       padding = 10
@@ -153,6 +192,13 @@ nb_addin_ui <- function() {
 #' `inst/rstudio/addins.dcf` -- this function is not usually called
 #' directly, though nothing stops you.
 #'
+#' The "Auto-run in RStudio" checkbox (on by default) controls what happens
+#' next: on, the resolved R is run in the Console or inserted into the
+#' Source file immediately; off, nothing is run or inserted automatically
+#' -- the resolved R instead appears in a "Resolved R" box you click to
+#' select and copy, to paste and run yourself wherever and whenever you
+#' want.
+#'
 #' @export
 ninebark_addin <- function() {
   if (!rstudioapi::isAvailable()) {
@@ -167,14 +213,36 @@ ninebark_addin <- function() {
 
   server <- function(input, output, session) {
     log_entries <- shiny::reactiveVal(character(0))
+    last_code <- shiny::reactiveVal("")
 
     do_run <- function() {
-      entry <- nb_run_one(input$nb_input)
-      if (!is.null(entry)) log_entries(c(entry, log_entries()))
+      result <- nb_run_one(input$nb_input, isTRUE(input$nb_auto))
+      if (!is.null(result)) {
+        log_entries(c(result$entry, log_entries()))
+        if (!is.null(result$code)) last_code(result$code)
+      }
       shiny::updateTextInput(session, "nb_input", value = "")
     }
 
     shiny::observeEvent(input$nb_run, do_run(), ignoreInit = TRUE)
+
+    output$nb_resolved <- shiny::renderUI({
+      code <- last_code()
+      if (!nzchar(code)) return(NULL)
+      shiny::tagList(
+        shiny::tags$label("Resolved R (click the box, then Cmd/Ctrl+C):", class = "nb-resolved-label"),
+        # A plain readonly <input>, not shiny::textInput() -- this is a
+        # DISPLAY the user copies FROM, not a value the server reads back;
+        # onclick="this.select()" selects the whole value in one click, no
+        # need for the Clipboard API (whose permissions inside RStudio's
+        # gadget viewer are unconfirmed, so this doesn't depend on it).
+        shiny::tags$input(
+          type = "text", readonly = NA, value = code, class = "nb-resolved-box",
+          onclick = "this.select();"
+        )
+      )
+    })
+
     output$nb_log <- shiny::renderUI({
       shiny::tags$pre(id = "nb_log", paste(log_entries(), collapse = "\n\n"))
     })

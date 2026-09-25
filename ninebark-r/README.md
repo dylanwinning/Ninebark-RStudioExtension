@@ -27,11 +27,17 @@ That's it — no API key, no server, no account. Everything runs locally.
 
 ## Use
 
-Open the **Addins** menu (top toolbar) → **Ninebark**. A small dialog
-opens: type a phrase, press **Run** (or Enter), and it either runs in your
-Console or gets inserted into whichever Source file you have open —
-[the root README](../README.md#what-it-supports) has the full list of
-what's understood.
+Open the **Addins** menu (top toolbar) → **Ninebark**. A small panel opens
+in the Viewer pane (bottom-right by default): type a phrase, press **Run**
+(or Enter) — [the root README](../README.md#what-it-supports) has the full
+list of what's understood.
+
+By default it runs immediately, either in your Console or inserted into
+whichever Source file you have open. Uncheck **Auto-run in RStudio** if
+you'd rather review the R before anything happens: with it off, nothing
+runs or gets inserted automatically — the resolved R appears instead in a
+"Resolved R" box (click it to select the text, then Cmd/Ctrl+C), so you can
+paste it in and run it yourself, on your own terms.
 
 Want a keyboard shortcut instead of the menu? **Tools → Modify Keyboard
 Shortcuts…**, search "Ninebark", and bind it to whatever you like.

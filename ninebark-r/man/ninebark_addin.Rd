@@ -16,4 +16,10 @@ Registered as an RStudio Addin (Addins menu, or bind it to a keyboard
 shortcut via Tools > Modify Keyboard Shortcuts > search "Ninebark") by
 \code{inst/rstudio/addins.dcf} — this function is not usually called
 directly, though nothing stops you.
+
+The "Auto-run in RStudio" checkbox (on by default) controls what happens
+next: on, the resolved R is run in the Console or inserted into the Source
+file immediately; off, nothing is run or inserted automatically — the
+resolved R instead appears in a "Resolved R" box you click to select and
+copy, to paste and run yourself wherever and whenever you want.
 }
