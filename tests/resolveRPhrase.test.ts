@@ -43,6 +43,10 @@ describe('shared math vocabulary reduces to an R expression', () => {
   ])('%s -> %s', (phrase, expected) => {
     expect(resolveToRStatement(phrase)).toBe(expected)
   })
+
+  it('"at <point>" evaluates the CDF there and returns a plain number — it does NOT plot (reported as broken by a real user; it is correct — the fix was adding a SEPARATE "plot a normal distribution ..." phrasing, see rPlotting.test.ts, not changing this one)', () => {
+    expect(resolveToRStatement('cdf of a normal distribution with mean 0 and sd 1 at 1.96')).toBe('pnorm(1.96, 0, 1)')
+  })
 })
 
 describe('assignment', () => {

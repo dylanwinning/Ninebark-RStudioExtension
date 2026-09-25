@@ -138,14 +138,21 @@ const KNOWN_UNSUPPORTED: Record<string, string> = {
 // Desmos-arg-order → R's d/p/q distribution-function stems (the stats
 // package's own naming convention: d = density/pmf, p = CDF, q = inverse
 // CDF/quantile — ships with every R install, no package needed).
-const DISTRIBUTIONS: Record<string, { stem: string; nparams: number }> = {
-  normaldist: { stem: 'norm', nparams: 2 },      // (mean, sd)
-  tdist: { stem: 't', nparams: 1 },              // (df)
-  chisqdist: { stem: 'chisq', nparams: 1 },      // (df)
-  binomialdist: { stem: 'binom', nparams: 2 },   // (size, prob)
-  poissondist: { stem: 'pois', nparams: 1 },     // (lambda)
-  uniformdist: { stem: 'unif', nparams: 2 },     // (min, max)
-  geodist: { stem: 'geom', nparams: 1 },         // (prob) — R counts FAILURES before the first success
+//
+// Exported (not just used internally by renderDistAccessor below) so
+// rPlotting.ts's "plot a normal distribution with mean 0 and sd 1" can
+// reuse the exact same name -> {stem, nparams, discrete} mapping rather
+// than maintaining a second copy that could drift out of sync — single
+// source of truth for "what distributions does Ninebark know about and
+// what R stem/arity does each one have."
+export const DISTRIBUTIONS: Record<string, { stem: string; nparams: number; discrete: boolean }> = {
+  normaldist: { stem: 'norm', nparams: 2, discrete: false },      // (mean, sd)
+  tdist: { stem: 't', nparams: 1, discrete: false },              // (df)
+  chisqdist: { stem: 'chisq', nparams: 1, discrete: false },      // (df)
+  binomialdist: { stem: 'binom', nparams: 2, discrete: true },    // (size, prob)
+  poissondist: { stem: 'pois', nparams: 1, discrete: true },      // (lambda)
+  uniformdist: { stem: 'unif', nparams: 2, discrete: false },     // (min, max)
+  geodist: { stem: 'geom', nparams: 1, discrete: true },          // (prob) — R counts FAILURES before the first success
 }
 
 class RFormalParser {

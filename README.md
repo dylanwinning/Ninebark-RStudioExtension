@@ -159,7 +159,14 @@ In plain English:
   of counts", "a line chart of y vs x", "add a title 'Results'", "label the
   x axis 'time (s)'", "add a regression line for x and y", "save the plot
   to plot.png"; the `ggplot2` forms ("a ggplot of x and y from df") only
-  when explicitly asked for.
+  when explicitly asked for. "plot a normal distribution with mean 0 and
+  sd 1" / "plot the cdf of a binomial distribution with 10 trials and
+  probability 0.3" draws the actual curve (normal/t/chi-squared/uniform get
+  a real `curve()`; binomial/poisson/geometric — discrete — get a spike or
+  step plot instead, since `curve()` would misrepresent them as continuous)
+  — a genuinely different thing from naming a specific point ("... at
+  1.96"), which stays a plain number (see the next bullet); say which one
+  you want.
 - **Strings**: "concatenate 'a' and 'b'", "the length of the string
   'hello'", "convert x to uppercase", "split 'a,b,c' by comma", "replace
   'a' with 'b' in x", "trim whitespace from x", "does x contain y",

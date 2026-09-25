@@ -9,6 +9,21 @@
 // graphics vs. ggplot2's grammar-of-graphics) means this module has to pick
 // a default rather than there being one obvious "the" plot call — base
 // graphics is the default because it needs no library() first.
+//
+// This file ALSO recognizes "plot a normal distribution with mean 0 and sd
+// 1" / "plot the cdf of a t distribution with 10 degrees of freedom" — a
+// genuinely different thing from "cdf of a normal distribution ... at
+// 1.96" (formalToR.ts, evaluates the CDF at a specific point → a plain
+// number). Both phrasings are meaningful and neither should guess at the
+// other: "at 1.96" is a precise ask for the probability at that point, and
+// changing it to plot instead would be wrong for anyone who wants the
+// number (the far more common statistics question); "plot a normal
+// distribution ..." with no point had no way to get a curve at all before
+// this, which is the actual gap. tryDistributionPlot below owns "plot
+// <distribution phrase>" specifically; every other tryXyz in this file
+// still owns "plot <everything else>".
+import { recognizeDesmosPhrase, stripFiller, normalizeUnicodeMath } from './vendor/ninebark-engine/desmosNlVocab'
+import { DISTRIBUTIONS } from './formalToR'
 
 const IDENT = String.raw`[A-Za-z][\w.$]*`
 const FILE = String.raw`[\w./\\ -]+?\.(?:png|pdf|jpe?g|svg)`
@@ -24,6 +39,116 @@ function tryScatter(text: string): string | null {
   m = text.match(new RegExp(`^(?:plot|scatter(?:\\s*plot)?(?:\\s+of)?)\\s+(${IDENT})\\s+(?:vs\\.?|versus|and)\\s+(${IDENT})$`, 'i'))
   if (m) return `plot(${m[1]}, ${m[2]})`
   return null
+}
+
+// Parses "a normal distribution with mean 0 and sd 1" / "a t distribution
+// with 10 degrees of freedom" / "a uniform distribution from 0 to 10" /
+// etc. by reusing the SAME shared-vocab recognizer that already parses
+// this exact phrasing for value lookups ("cdf of a normal distribution
+// ... at 1.96") — recognizeDesmosPhrase returns a bare formal string like
+// "normaldist(0, 1)" when there's no ".pdf()"/".cdf()"/"at X" accessor,
+// which is exactly the distribution-plus-parameters shape this needs.
+// Returns null for anything that isn't a recognized distribution — the
+// caller falls through to the other plot recognizers, unchanged. Note this
+// means null covers TWO different underlying behaviors from
+// recognizeDesmosPhrase: it returns null itself for text that isn't a
+// distribution phrase at all, but THROWS (e.g. UnsupportedFormalError) for
+// text that IS a distribution but is missing a required parameter —
+// uniformdist has no default min/max, so "a uniform distribution" alone
+// throws rather than returning null. tryDistributionPlot's bounds-stripping
+// fallback relies on that second case failing cleanly here (as null) so it
+// can retry the unstripped phrase, so the catch below is load-bearing, not
+// defensive boilerplate.
+function parseDistributionPhrase(phrase: string): { name: string; params: string[] } | null {
+  const cleaned = stripFiller(normalizeUnicodeMath(phrase))
+  let formal: string | null
+  try {
+    formal = recognizeDesmosPhrase(cleaned)
+  } catch {
+    return null
+  }
+  if (!formal) return null
+  const m = /^([a-z]+)\(([^)]*)\)$/i.exec(formal)
+  if (!m || !(m[1] in DISTRIBUTIONS)) return null
+  const params = m[2].split(',').map(s => s.trim()).filter(s => s.length > 0)
+  return { name: m[1], params }
+}
+
+// A plotting range wide enough to show the whole meaningful shape of each
+// distribution family without the caller having to specify one — a UX
+// default, not a semantic guess (an explicit "from A to B" always overrides
+// it; see tryDistributionPlot). Continuous families use their standard
+// "how many SDs/width to show" convention; discrete families use their
+// natural finite-or-practical support so the spike/step plot isn't mostly
+// empty.
+function defaultDistributionBounds(name: string, params: string[]): [number, number] {
+  const p = params.map(Number)
+  switch (name) {
+    case 'normaldist': { const [mean, sd] = p; return [mean - 4 * sd, mean + 4 * sd] }
+    case 'uniformdist': { const [a, b] = p; return [a, b] }
+    case 'tdist': return [-4, 4] // t's shape is essentially normal-range regardless of df
+    case 'chisqdist': { const [df] = p; return [0, Math.ceil(df + 4 * Math.sqrt(2 * df))] }
+    case 'binomialdist': { const [n] = p; return [0, Math.round(n)] }
+    case 'poissondist': { const [lambda] = p; return [0, Math.max(10, Math.ceil(lambda + 4 * Math.sqrt(lambda)))] }
+    case 'geodist': { const [prob] = p; return [0, Math.min(50, Math.ceil(5 / prob))] }
+    default: return [-4, 4]
+  }
+}
+
+// "plot a normal distribution with mean 0 and sd 1" (defaults to the PDF —
+// the density/bell-curve shape, what "plot a distribution" means absent
+// other information) / "plot the pdf of ..." / "plot the cdf of ...".
+// Continuous families (normal/t/chi-squared/uniform) get a real curve();
+// discrete families (binomial/poisson/geometric) get a spike plot (pmf,
+// type="h") or step plot (cdf, type="s") instead — curve() draws a
+// continuous line, which would misrepresent a distribution that only has
+// mass at integers.
+//
+// Bounds resolution tries a trailing "from A to B" as an EXPLICIT BOUNDS
+// OVERRIDE first, stripping it and parsing whatever's left as the
+// distribution phrase — this is what makes "plot a normal distribution
+// with mean 0 and sd 1 from -3 to 3" actually honor "-3 to 3" instead of
+// the computed default. Only when that stripped parse fails does it fall
+// back to trying the WHOLE remainder unstripped: recognizeDesmosPhrase
+// tolerates (silently ignores) trailing text it doesn't recognize as part
+// of a distribution's own grammar, so trying the stripped version FIRST is
+// required, not just tidier — trying the whole string first would always
+// succeed and silently swallow the override before the bounds-stripped
+// branch ever got a chance to run. The fallback exists specifically for
+// uniformdist, whose own parameters ARE spelled "from A to B" ("a uniform
+// distribution from 0 to 10") — stripping that leaves "a uniform
+// distribution" with no parameters, which correctly fails to parse, so
+// this falls back to the whole string and uniform's own min/max become the
+// plot bounds too (there's nothing else they could sensibly be).
+function tryDistributionPlot(text: string): string | null {
+  const m = /^plot\s+(?:the\s+(pdf|cdf)\s+of\s+)?(.+)$/i.exec(text)
+  if (!m) return null
+  const kind = (m[1] ?? 'pdf').toLowerCase() === 'cdf' ? 'cdf' : 'pdf'
+  const rest = m[2].trim()
+
+  let dist: { name: string; params: string[] } | null = null
+  let bounds: [string, string] | null = null
+
+  const boundsMatch = /^(.+?)\s+from\s+(-?[\d.]+)\s+to\s+(-?[\d.]+)$/i.exec(rest)
+  if (boundsMatch) {
+    dist = parseDistributionPhrase(boundsMatch[1].trim())
+    if (dist) bounds = [boundsMatch[2], boundsMatch[3]]
+  }
+  if (!dist) dist = parseDistributionPhrase(rest)
+  if (!dist) return null
+
+  const info = DISTRIBUTIONS[dist.name]
+  const [from, to] = bounds ?? defaultDistributionBounds(dist.name, dist.params).map(String)
+  const fn = (kind === 'cdf' ? 'p' : 'd') + info.stem
+  const params = dist.params.join(', ')
+
+  if (!info.discrete) {
+    return `curve(${fn}(x, ${params}), from = ${from}, to = ${to})`
+  }
+  const xs = `${Math.round(Number(from))}:${Math.round(Number(to))}`
+  const type = kind === 'cdf' ? 's' : 'h'
+  const ylab = kind === 'cdf' ? 'cumulative probability' : 'probability'
+  return `plot(${xs}, ${fn}(${xs}, ${params}), type = "${type}", xlab = "x", ylab = "${ylab}")`
 }
 
 // "plot sin(x) from 0 to 2*pi" / "plot x^2 from -5 to 5" — needs the
@@ -147,6 +272,7 @@ export function recognizePlotting(rawText: string): string | null {
   const text = rawText.trim()
   return (
     tryGgplot(text) ??
+    tryDistributionPlot(text) ??
     tryScatter(text) ??
     tryCurve(text) ??
     tryHist(text) ??

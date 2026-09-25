@@ -27,6 +27,8 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
   { title: 'Plotting', examples: [
     'scatter plot of x and y', 'histogram of x', 'boxplot of x by group',
     "add a title 'Results'", "label the x axis 'time (s)'", 'a ggplot of x and y from df',
+    'plot a normal distribution with mean 0 and sd 1',
+    'plot the cdf of a binomial distribution with 10 trials and probability 0.3',
   ] },
   { title: 'Control flow', examples: [
     'for i in 1 to 10 print i', 'if x is greater than 5 print big else print small',
