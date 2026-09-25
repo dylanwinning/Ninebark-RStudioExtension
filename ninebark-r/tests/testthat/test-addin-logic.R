@@ -59,3 +59,49 @@ test_that("nb_manual_outcome() names the right target and never throws", {
     "the Source editor", fixed = TRUE
   )
 })
+
+# ── Regression tests: the "silently queued, never runs" bug ────────────────
+# shiny::runGadget() blocks R's interpreter for as long as this panel is
+# open, so rstudioapi::sendToConsole(execute = TRUE) only QUEUES a command
+# at the console -- it can't evaluate until the gadget closes, and
+# sendToConsole() itself doesn't error just because R can't get around to
+# running it, so an earlier version of nb_dispatch() called it with
+# execute = TRUE and wrongly reported "ran in the Console" when nothing had
+# actually run. The headless "RStudio not running" error the tests above
+# rely on happens too early to catch THIS specific mistake (it masks
+# whatever arguments were passed), so these tests mock
+# rstudioapi::sendToConsole()/insertText() directly to inspect the actual
+# call -- this is what would have caught the bug before it shipped.
+
+test_that("the Console target sends execute = FALSE, never TRUE, and says to close the panel first", {
+  calls <- list()
+  testthat::local_mocked_bindings(
+    sendToConsole = function(code, execute = TRUE, echo = TRUE, focus = TRUE, animate = FALSE) {
+      calls[[length(calls) + 1]] <<- list(code = code, execute = execute)
+      invisible(NULL)
+    },
+    .package = "rstudioapi"
+  )
+  outcome <- ninebark:::nb_dispatch(list(target = "console", code = "mean(c(1, 2, 3))"))
+
+  expect_length(calls, 1)
+  expect_identical(calls[[1]]$execute, FALSE)
+  expect_identical(calls[[1]]$code, "mean(c(1, 2, 3))")
+  expect_match(outcome, "close this panel", fixed = TRUE)
+  expect_match(outcome, "press Enter", fixed = TRUE)
+  expect_no_match(outcome, "^ran in the Console")
+})
+
+test_that("the Source target still calls insertText() and genuinely reports it as done (unaffected by the console-blocking issue)", {
+  inserted <- NULL
+  testthat::local_mocked_bindings(
+    getSourceEditorContext = function() list(id = "doc1", path = "/tmp/script.R"),
+    insertText = function(text, id = NULL) { inserted <<- list(text = text, id = id); invisible(NULL) },
+    .package = "rstudioapi"
+  )
+  outcome <- ninebark:::nb_dispatch(list(target = "source", code = "x <- 5"))
+
+  expect_equal(inserted$text, "x <- 5\n")
+  expect_equal(inserted$id, "doc1")
+  expect_match(outcome, "^inserted into script\\.R")
+})

@@ -2,15 +2,25 @@
 
 A natural-language front end for RStudio — type a command in plain English
 ("mean of 1,2,3,4,5", "let x be 5", "read the csv file data.csv into df",
-"for i in 1 to 10 print i") and it's translated into real R and, by
-default, sent straight to the live R **Console** you already have open, the
-same way Ninebark-MATLABExtension drives a live MATLAB session. A second
-command form — "in the script ...", "insert ... into the script" — routes
-instead to the **Source editor**, for authoring into an open `.R` file
-rather than running something immediately. The Addin ([below](#two-ways-to-use-this))
-also has an "Auto-run" toggle, off, that leaves everything as inert text in
-a copy box instead of running or inserting anything automatically, for
-anyone who'd rather review the R before it touches their session.
+"for i in 1 to 10 print i") and it's translated into real R headed for the
+live **Console** you already have open. A second command form — "in the
+script ...", "insert ... into the script" — routes instead to the **Source
+editor**, for authoring into an open `.R` file rather than running
+something immediately.
+
+Exactly what "headed for the Console" means differs by which of the two
+delivery mechanisms below you use: the Chrome extension can genuinely run
+it there and show you the real output (same posture as
+Ninebark-MATLABExtension driving a live MATLAB session), because it talks
+to RStudio over the same network call its own browser client uses — no R
+process of its own to get in the way. The Addin talks to RStudio through R
+itself, though, and R has a hard limit the extension doesn't: while the
+Addin's own panel is open, RStudio can't evaluate anything new at the
+Console (the panel occupies R), so its Console target is typed in, ready to
+go, rather than run automatically — close the panel, then press Enter
+there. Its own README explains why. The Addin also has an "Auto-fill"
+toggle ([below](#two-ways-to-use-this)) — off, it shows you the resolved R
+in a copy box instead of touching your session at all.
 
 ## Two ways to use this
 
@@ -25,9 +35,14 @@ want depends on which RStudio you use:
   Cloud**, because it reaches the editor only through the official
   `rstudioapi` package, running inside R itself — nothing browser-shaped
   about it. **This is almost certainly what you want** if you're using
-  regular desktop RStudio, which most people are. Has an "Auto-run in
-  RStudio" toggle (on by default) — turn it off to get the resolved R in a
-  copy-and-paste box instead of having it run/inserted automatically. See
+  regular desktop RStudio, which most people are. Running through R itself
+  is also its one real trade-off: RStudio can't evaluate new Console input
+  while the Addin's own panel is open, so the Console target gets typed in
+  ready to go rather than run automatically (close the panel, then press
+  Enter there) — the Source target has no such limit and is genuinely
+  instant. Has an "Auto-fill in RStudio" toggle (on by default) — turn it
+  off to get the resolved R in a copy-and-paste box instead of having it
+  inserted/typed automatically. See
   [`ninebark-r/README.md`](ninebark-r/README.md).
 - **[`extension/`](extension/) — a Chrome extension.** Targets **Posit
   Cloud, RStudio Server, and Posit Workbench only** — the web editions,

@@ -2,13 +2,15 @@
 # recommended pattern for an Addin with interactive input) registered by
 # inst/rstudio/addins.dcf. Type a phrase, hit Run (or press Enter); it's
 # resolved via ninebark_resolve() (R/resolve.R), then EITHER dispatched
-# through rstudioapi -- sendToConsole() for the Console target (real
-# evaluation, real output, same posture as the Chrome extension's live-eval
-# model), or insertText() into the active Source document for the Source
-# target ("in the script ...", inserted unexecuted) -- OR, when the
-# "Auto-run in RStudio" toggle is off, just shown in a copyable box so the
-# user pastes and runs it themselves. rstudioapi is the one and only thing
-# this file touches to reach the editor (in auto-run mode), which is
+# through rstudioapi -- insertText() into the active Source document for the
+# Source target ("in the script ...", inserted unexecuted; this genuinely
+# runs immediately, see nb_dispatch()'s comment for why), sendToConsole()
+# for the Console target (typed in, ready to run -- NOT executed
+# automatically; same comment explains why "Auto-fill" can't mean instant
+# EXECUTION for the Console specifically, only instant typing) -- OR, when
+# the "Auto-fill in RStudio" toggle is off, just shown in a copyable box so
+# the user pastes and runs it themselves. rstudioapi is the one and only
+# thing this file touches to reach the editor (in auto-fill mode), which is
 # exactly why this works identically in RStudio Desktop, Server, Workbench,
 # and Cloud -- no per-frontend branching anywhere in this file.
 
@@ -19,15 +21,47 @@ nb_log_entry <- function(input_text, outcome_text) {
   sprintf("%s\n  -> %s\n%s", input_text, outcome_text, strrep("-", 44))
 }
 
+# -- Why the Console target can't auto-EXECUTE while this panel is open -----
+# shiny::runGadget() (called at the bottom of ninebark_addin()) blocks R's
+# single interpreter thread for as long as the gadget stays open -- this is
+# standard, well-documented Shiny behavior (runApp()/runGadget() run their
+# own event loop synchronously in the current R process). When this file's
+# server() code runs (e.g. the observeEvent() that fires on clicking Run),
+# R genuinely IS executing code right then -- but it's executing THIS
+# function call, nested inside Shiny's own blocking loop, not sitting idle
+# at R's top-level prompt. rstudioapi::sendToConsole(execute = TRUE) asks
+# the IDE to submit code to the console FOR EVALUATION, but the console can
+# only evaluate NEW top-level input once R returns to that top-level
+# prompt -- which will not happen until the gadget itself closes. The
+# result (confirmed against real-world addin reports of the same thing,
+# and the RStudio Addins/Shiny Gadgets pattern of only touching the console
+# from a `done`/close handler, never while a gadget is still running): the
+# command gets silently QUEUED at the console, sendToConsole() itself
+# returns without error, and this file used to report "ran in the Console"
+# -- a false claim, since nothing had actually run yet, and would not until
+# the user closed the panel. (insertText(), used for the Source target
+# below, is NOT affected: it's a pure editor-document edit the IDE can
+# complete on its own, with no dependency on R's top-level prompt being
+# free -- so that path genuinely does run immediately, panel open or not.)
+#
+# The honest, always-correct behavior for the Console target, implemented
+# below: TYPE the code into the console's input line (execute = FALSE --
+# this itself is not affected by the same blocking, since it's the IDE
+# populating a text field, not asking R to evaluate anything) so it's
+# sitting there ready, and say plainly that closing this panel first is
+# what actually lets it run -- never claim it already ran.
 nb_dispatch <- function(result) {
   # result$ok is TRUE here (checked by the caller) -- this only decides
   # WHERE the resolved code goes and reports back what happened, mirroring
   # dispatchRCommand() in the TypeScript engine's rExecClient.ts. Only
-  # called when the "Auto-run in RStudio" toggle is on -- see
+  # called when the "Auto-fill in RStudio" toggle is on -- see
   # nb_manual_outcome() for the off case, which never touches rstudioapi.
   if (identical(result$target, "console")) {
-    rstudioapi::sendToConsole(result$code, execute = TRUE, echo = TRUE, focus = FALSE)
-    return(sprintf("ran in the Console:  %s", result$code))
+    rstudioapi::sendToConsole(result$code, execute = FALSE, echo = TRUE, focus = FALSE)
+    return(sprintf(
+      "typed into the Console -- close this panel, then press Enter there to run it:  %s",
+      result$code
+    ))
   }
 
   ctx <- tryCatch(rstudioapi::getSourceEditorContext(), error = function(e) NULL)
@@ -42,14 +76,24 @@ nb_dispatch <- function(result) {
   sprintf("inserted into %s:  %s", label, result$code)
 }
 
-# The "Auto-run in RStudio" toggle is off: resolve, but never call
+# The "Auto-fill in RStudio" toggle is off: resolve, but never call
 # rstudioapi at all -- the resolved code is shown in the "Resolved R" box
 # (nb_addin_ui()'s uiOutput("nb_resolved")) for the user to copy and paste
 # themselves, whichever target it's headed for. This function only builds
 # the log message; nb_run_one() is what skips calling nb_dispatch().
 nb_manual_outcome <- function(result) {
-  where <- if (identical(result$target, "console")) "the Console" else "the Source editor"
-  sprintf("resolved for %s -- copy it from the box above and paste it in yourself:  %s", where, result$code)
+  if (identical(result$target, "console")) {
+    # Pasting into the Console and pressing Enter needs R to be at its
+    # top-level prompt to evaluate it -- which it is NOT while this panel
+    # is open (see nb_dispatch()'s comment on why). Editing a Source FILE
+    # has no such requirement (it's just text in an editor), so only the
+    # Console case needs this caveat.
+    return(sprintf(
+      "resolved for the Console -- copy it from the box above, close this panel, then paste and run it:  %s",
+      result$code
+    ))
+  }
+  sprintf("resolved for the Source editor -- copy it from the box above and paste it in yourself:  %s", result$code)
 }
 
 # Returns list(entry = <one log block, always>, code = <the resolved R, or
@@ -165,12 +209,16 @@ nb_addin_ui <- function() {
           shiny::textInput("nb_input", label = NULL, placeholder = "mean of 1,2,3,4,5", width = "100%"),
           shiny::actionButton("nb_run", "Run", class = "btn-primary", style = "margin-left:8px;")
         ),
-        # Default TRUE: preserves this addin's original behavior (resolve
-        # AND run/insert immediately) unless someone explicitly opts into
-        # the paste-it-yourself mode instead.
+        # Default TRUE: preserves this addin's original behavior (act on the
+        # result immediately -- insert into the Source file, or type it into
+        # the Console) unless someone explicitly opts into the
+        # paste-it-yourself mode instead. NOTE the label doesn't promise the
+        # Console case will actually RUN: it can't, while this panel is open
+        # (see nb_dispatch()'s comment) -- typed in and ready is the honest,
+        # achievable claim there. The Source case genuinely is immediate.
         shiny::checkboxInput(
           "nb_auto",
-          "Auto-run in RStudio (off: show the R below to copy and paste in yourself)",
+          "Auto-fill in RStudio (off: show the R below to copy and paste in yourself)",
           value = TRUE
         ),
         shiny::uiOutput("nb_resolved"),
@@ -184,20 +232,23 @@ nb_addin_ui <- function() {
 #' Launch the Ninebark Addin
 #'
 #' Opens a small panel in RStudio's Viewer pane (bottom-right by default):
-#' type a plain-English R command, press Run (or Enter), and it's run in the
-#' live Console or inserted into the open Source file -- see
+#' type a plain-English R command, press Run (or Enter), and it's inserted
+#' into the open Source file or typed into the Console -- see
 #' [ninebark_resolve()] for the resolution contract this wraps. Registered
 #' as an RStudio Addin (Addins menu, or bind it to a keyboard shortcut via
 #' Tools > Modify Keyboard Shortcuts > search "Ninebark") by
 #' `inst/rstudio/addins.dcf` -- this function is not usually called
 #' directly, though nothing stops you.
 #'
-#' The "Auto-run in RStudio" checkbox (on by default) controls what happens
-#' next: on, the resolved R is run in the Console or inserted into the
-#' Source file immediately; off, nothing is run or inserted automatically
-#' -- the resolved R instead appears in a "Resolved R" box you click to
-#' select and copy, to paste and run yourself wherever and whenever you
-#' want.
+#' The "Auto-fill in RStudio" checkbox (on by default) controls what
+#' happens next: on, the resolved R for the Source target is inserted
+#' immediately, and for the Console target is typed into the Console ready
+#' to go (close this panel, then press Enter there to actually run it --
+#' RStudio can't evaluate new Console input while this panel's own Shiny
+#' process is running, so nothing can auto-execute there while it's open,
+#' only auto-type); off, nothing is inserted or typed automatically -- the
+#' resolved R instead appears in a "Resolved R" box you click to select and
+#' copy, to paste in yourself wherever and whenever you want.
 #'
 #' @export
 ninebark_addin <- function() {

@@ -9,17 +9,21 @@ ninebark_addin()
 }
 \description{
 Opens a small panel in RStudio's Viewer pane (bottom-right by default):
-type a plain-English R command, press Run (or Enter), and it's run in the
-live Console or inserted into the open Source file — see
+type a plain-English R command, press Run (or Enter), and it's inserted
+into the open Source file or typed into the Console — see
 \code{\link{ninebark_resolve}} for the resolution contract this wraps.
 Registered as an RStudio Addin (Addins menu, or bind it to a keyboard
 shortcut via Tools > Modify Keyboard Shortcuts > search "Ninebark") by
 \code{inst/rstudio/addins.dcf} — this function is not usually called
 directly, though nothing stops you.
 
-The "Auto-run in RStudio" checkbox (on by default) controls what happens
-next: on, the resolved R is run in the Console or inserted into the Source
-file immediately; off, nothing is run or inserted automatically — the
-resolved R instead appears in a "Resolved R" box you click to select and
-copy, to paste and run yourself wherever and whenever you want.
+The "Auto-fill in RStudio" checkbox (on by default) controls what happens
+next: on, the resolved R for the Source target is inserted immediately, and
+for the Console target is typed into the Console ready to go (close this
+panel, then press Enter there to actually run it — RStudio can't evaluate
+new Console input while this panel's own Shiny process is running, so
+nothing can auto-execute there while it's open, only auto-type); off,
+nothing is inserted or typed automatically — the resolved R instead appears
+in a "Resolved R" box you click to select and copy, to paste in yourself
+wherever and whenever you want.
 }

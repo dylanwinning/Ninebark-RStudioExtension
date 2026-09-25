@@ -32,12 +32,23 @@ in the Viewer pane (bottom-right by default): type a phrase, press **Run**
 (or Enter) — [the root README](../README.md#what-it-supports) has the full
 list of what's understood.
 
-By default it runs immediately, either in your Console or inserted into
-whichever Source file you have open. Uncheck **Auto-run in RStudio** if
-you'd rather review the R before anything happens: with it off, nothing
-runs or gets inserted automatically — the resolved R appears instead in a
-"Resolved R" box (click it to select the text, then Cmd/Ctrl+C), so you can
-paste it in and run it yourself, on your own terms.
+By default it acts immediately: for the Source target, that means genuinely
+inserted right into whichever file you have open; for the Console target,
+it means **typed into the Console, ready to go** — not run automatically.
+That's not a shortcoming to be fixed, it's a hard limit of RStudio itself:
+while this panel is open, RStudio can't evaluate anything new typed at the
+Console (the panel's own process is what's occupying it), so nothing —
+not Ninebark, not you typing by hand — can make the Console actually run
+code until the panel is closed. **Close this panel, then press Enter in
+the Console** to run what's sitting there. (The Source target has no such
+limit — editing a file doesn't need the Console free, so that one really
+does happen instantly.)
+
+Uncheck **Auto-fill in RStudio** if you'd rather review the R before it
+touches your session at all: with it off, nothing is inserted or typed
+automatically — the resolved R appears instead in a "Resolved R" box
+(click it to select the text, then Cmd/Ctrl+C), so you can paste it in
+wherever and whenever you want.
 
 Want a keyboard shortcut instead of the menu? **Tools → Modify Keyboard
 Shortcuts…**, search "Ninebark", and bind it to whatever you like.
