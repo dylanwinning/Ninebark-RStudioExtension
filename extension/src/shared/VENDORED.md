@@ -22,6 +22,8 @@ match what every other interface's content script uses — a straight port.
   it there" messaging stays accurate.
 
 Vendored 2026-09-19 from local `Ninebark-DesmosExtension` at commit
-`3c00632` (main). Re-sync steps are documented alongside the rest of this
+`3c00632` on its `split-sheets-extension` branch (not `main` — see
+`../../../src/vendor/ninebark-engine/README.md`'s Provenance section for
+why). Re-sync steps are documented alongside the rest of this
 repo's vendored engine — see
 [`../../../src/vendor/ninebark-engine/README.md`](../../../src/vendor/ninebark-engine/README.md).

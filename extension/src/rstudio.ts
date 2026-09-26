@@ -60,7 +60,7 @@ function mountWidget(): void {
     e.preventDefault()
     const rawInput = ui.input.value.trim()
     if (!rawInput) return
-    logRawInput(rawInput)
+    logRawInput(rawInput, 'rstudio')
 
     // Resolution — pure logic, always works.
     let command: ReturnType<typeof resolveToRCommand>

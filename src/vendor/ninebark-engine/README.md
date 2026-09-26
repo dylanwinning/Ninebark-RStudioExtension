@@ -48,7 +48,20 @@ See that folder's own `VENDORED.md` for their provenance.
 ## Provenance
 
 Vendored 2026-09-19 from local `Ninebark-DesmosExtension` at commit
-`3c00632` (main).
+`3c00632` (branch label corrected below — see 2026-09-25 entry).
+
+**Partial re-sync 2026-09-25** (`inputLogger.ts` only, not the full vendor
+set) from local `Ninebark-DesmosExtension` at commit `0b83af3` on its
+`split-sheets-extension` branch — `logRawInput()` gained a required
+`interfaceId` second argument (each caller passes its own
+`extension/src/shared/interfaces.ts` id, e.g. `'rstudio'`), tagging each
+logged row so the Apps Script endpoint can route it to a per-interface
+Sheet tab. `extension/src/rstudio.ts`'s call site was updated to
+`logRawInput(rawInput, 'rstudio')` to match. (Note: `Ninebark-DesmosExtension`
+is not actually on `main` locally — it's on `split-sheets-extension`, which
+`main` there doesn't yet include; every commit hash vendored from it so far,
+including the original `3c00632` above, actually came from that branch, not
+`main` as previously logged here.)
 
 ## Re-syncing after Ninebark-DesmosExtension changes
 
