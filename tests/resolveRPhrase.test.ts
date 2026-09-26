@@ -47,6 +47,21 @@ describe('shared math vocabulary reduces to an R expression', () => {
   it('"at <point>" evaluates the CDF there and returns a plain number — it does NOT plot (reported as broken by a real user; it is correct — the fix was adding a SEPARATE "plot a normal distribution ..." phrasing, see rPlotting.test.ts, not changing this one)', () => {
     expect(resolveToRStatement('cdf of a normal distribution with mean 0 and sd 1 at 1.96')).toBe('pnorm(1.96, 0, 1)')
   })
+
+  it.each([
+    // Regression test: "std dev"/"stdev" were reported as "not recognized" —
+    // the vendored tier-2 lexicon had "standard deviation" and "stddev" (one
+    // word, double d) but not the equally common "std dev" (two words) or
+    // "stdev" (one word, single d); "population std dev" already worked,
+    // which is what made the gap an asymmetry rather than a deliberate
+    // omission. Fixed in vendor/ninebark-engine/ninebark-nl/nl/lexicon/
+    // classes.ts (a local patch pending an upstream re-sync — see that
+    // file's comment and src/vendor/ninebark-engine/README.md).
+    ['std dev of 5, 6, 7', 'sd(c(5, 6, 7))'],
+    ['stdev of 5, 6, 7', 'sd(c(5, 6, 7))'],
+  ])('%s -> %s', (phrase, expected) => {
+    expect(resolveToRStatement(phrase)).toBe(expected)
+  })
 })
 
 describe('assignment', () => {

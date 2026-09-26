@@ -447,6 +447,17 @@ export const LEXICON: LexEntry[] = [
   { words: ['upper', 'quartile'],                         cls: 'FUNCN', fnNName: 'Q3' },
   { words: ['standard', 'deviation', 'of'], cls: 'FUNCN', fnNName: 'stdDev' },
   { words: ['standard', 'deviation'],       cls: 'FUNCN', fnNName: 'stdDev' },
+  // LOCAL PATCH (not yet upstreamed to Ninebark-Prototype/Ninebark-DesmosExtension
+  // — see this repo's src/vendor/ninebark-engine/README.md): "std dev"/"stdev" are
+  // at least as common as spelling out "standard deviation", and 'population std
+  // dev' (3 words, below) was already covered while the plain/sample form was not
+  // — an asymmetry, not a deliberate omission. Added here, longest first, matching
+  // this file's own curation convention; carry this forward on the next re-sync
+  // from upstream rather than losing it, and consider proposing it upstream too,
+  // since every Ninebark interface vendors this same lexicon.
+  { words: ['std', 'dev', 'of'], cls: 'FUNCN', fnNName: 'stdDev' },
+  { words: ['std', 'dev'],       cls: 'FUNCN', fnNName: 'stdDev' },
+  { words: ['stdev'],            cls: 'FUNCN', fnNName: 'stdDev' },
   { words: ['population', 'variance'],      cls: 'FUNCN', fnNName: 'popVariance' },
   { words: ['population', 'std', 'dev'],    cls: 'FUNCN', fnNName: 'popStdDev' },
   { words: ['iqr'],                         cls: 'FUNCN', fnNName: 'IQR' },
