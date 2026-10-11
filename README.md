@@ -8,6 +8,27 @@ script ...", "insert ... into the script" — routes instead to the **Source
 editor**, for authoring into an open `.R` file rather than running
 something immediately.
 
+## Install
+
+Most people want the **RStudio Addin** — it works in every edition of
+RStudio, including regular Desktop. In the RStudio Console:
+
+```r
+install.packages("remotes")
+remotes::install_github("dylanwinning/Ninebark-RStudioExtension", subdir = "ninebark-r")
+```
+
+Then restart R (*Session → Restart R*) and open **Addins → Ninebark**.
+Full instructions, requirements, and troubleshooting:
+**[`ninebark-r/README.md`](ninebark-r/README.md#install)**.
+
+If you use RStudio only through a browser (Posit Cloud, RStudio Server,
+Posit Workbench), there's also a Chrome extension — see
+[`extension/README.md`](extension/README.md). It can't reach RStudio
+Desktop; the Addin above can reach everything.
+
+## How it reaches your session
+
 Exactly what "headed for the Console" means differs by which of the two
 delivery mechanisms below you use: the Chrome extension can genuinely run
 it there and show you the real output (same posture as

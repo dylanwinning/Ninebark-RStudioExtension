@@ -18,12 +18,59 @@ entirely by running *inside* R itself.
 
 ## Install
 
+**What you need:** R and RStudio — any edition (Desktop, Server, Workbench,
+Posit Cloud). Nothing else: no API key, no account, no server, no Node.js.
+Everything runs locally on your own machine, and Ninebark makes no network
+calls.
+
+**1. Install the package.** Paste both lines into the RStudio **Console**
+(bottom-left pane by default) and press Enter:
+
 ```r
-# install.packages("remotes")  # if you don't have it
+install.packages("remotes")
 remotes::install_github("dylanwinning/Ninebark-RStudioExtension", subdir = "ninebark-r")
 ```
 
-That's it — no API key, no server, no account. Everything runs locally.
+Skip the first line if you already have `remotes`. The second pulls in a
+few dependencies (`V8`, `rstudioapi`, `shiny`, `miniUI`) and takes a minute
+or two the first time. The `subdir = "ninebark-r"` part is required — this
+repo holds a browser extension alongside the R package, and that argument
+is what points the installer at the package.
+
+**2. Restart R.** *Session → Restart R*, or Ctrl/Cmd+Shift+F10. RStudio
+doesn't list a newly installed addin until you do.
+
+**3. Open it.** **Addins** menu in the top toolbar → **Ninebark**.
+
+### If something goes wrong
+
+- **`there is no package called 'remotes'`** — run
+  `install.packages("remotes")` first, then retry.
+- **`HTTP error 404` / "Did you spell the repo owner and name correctly?"** —
+  either the repo name is mistyped, or you don't have access to it (it's
+  private). If it's private and you should have access, you'll also need a
+  GitHub personal access token: create one at
+  [github.com/settings/tokens](https://github.com/settings/tokens) with the
+  `repo` scope, then run `Sys.setenv(GITHUB_PAT = "your_token_here")` before
+  the install line.
+- **`V8` fails to install (Linux only)** — macOS and Windows get a prebuilt
+  binary and need nothing extra. On Linux, install the system library
+  first, then retry the install:
+  ```bash
+  sudo apt install libv8-dev    # Debian / Ubuntu
+  sudo dnf install v8-devel     # Fedora / RHEL
+  ```
+- **"Ninebark" isn't in the Addins menu** — restart RStudio completely
+  (quit and reopen), not just the R session.
+
+### Updating and uninstalling
+
+To update, rerun the same `install_github(...)` line and restart R. To
+remove it entirely:
+
+```r
+remove.packages("ninebark")
+```
 
 ## Use
 
@@ -32,17 +79,19 @@ in the Viewer pane (bottom-right by default): type a phrase, press **Run**
 (or Enter) — [the root README](../README.md#what-it-supports) has the full
 list of what's understood.
 
-By default it acts immediately: for the Source target, that means genuinely
-inserted right into whichever file you have open; for the Console target,
-it means **typed into the Console, ready to go** — not run automatically.
-That's not a shortcoming to be fixed, it's a hard limit of RStudio itself:
-while this panel is open, RStudio can't evaluate anything new typed at the
-Console (the panel's own process is what's occupying it), so nothing —
-not Ninebark, not you typing by hand — can make the Console actually run
-code until the panel is closed. **Close this panel, then press Enter in
-the Console** to run what's sitting there. (The Source target has no such
-limit — editing a file doesn't need the Console free, so that one really
-does happen instantly.)
+What happens next depends on where the command is headed:
+
+- **Console commands** (the default — "mean of 1,2,3,4,5") get **typed into
+  the Console, ready to run, but not run for you**. To actually run them:
+  **close the Ninebark panel, then press Enter in the Console.**
+- **Source commands** ("in the script ...") are **inserted into your open
+  file immediately** — nothing further needed.
+
+That asymmetry is a hard limit of RStudio, not a missing feature: while the
+Ninebark panel is open it occupies R itself, and RStudio can't evaluate
+*anything* new at the Console until it closes — not Ninebark's code, not
+code you type by hand. Editing a file has no such requirement, which is why
+the Source side is instant.
 
 Uncheck **Auto-fill in RStudio** if you'd rather review the R before it
 touches your session at all: with it off, nothing is inserted or typed
