@@ -106,15 +106,17 @@ nb_run_one <- function(raw_text, auto) {
   text <- trimws(raw_text)
   if (!nzchar(text)) return(NULL)
 
-  # Logged here, before resolution, same as inputLogger.ts's callers do --
-  # so a phrase that fails to resolve is still logged (that's the point:
-  # finding real coverage gaps from actual usage). See R/inputLogger.R.
-  nb_log_input(text)
-
   result <- tryCatch(
     ninebark_resolve(text),
     error = function(e) list(ok = FALSE, error = conditionMessage(e))
   )
+
+  # Logged right after resolution, tagged with whether it actually
+  # succeeded -- same contract as inputLogger.ts's browser-side callers
+  # (see R/inputLogger.R). `recognized` here means resolution succeeded,
+  # not whether a subsequent nb_dispatch() below also succeeds -- an
+  # rstudioapi dispatch failure isn't an NL coverage gap.
+  nb_log_input(text, isTRUE(result$ok))
 
   if (isTRUE(result$ok)) {
     outcome <- if (isTRUE(auto)) {

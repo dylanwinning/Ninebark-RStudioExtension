@@ -44,13 +44,22 @@ nb_json_escape_string <- function(x) {
 # call, no system2() involved, and nothing to mock -- the same reason
 # nb_addin_ui() is split out from ninebark_addin() elsewhere in this
 # package. Not exported.
-nb_log_input_body <- function(text) {
+#
+# `recognized` is whether ninebark_resolve() actually understood the
+# phrase -- written as a literal JSON true/false (lowercase, not R's
+# TRUE/FALSE) so Code.gs's `typeof body.recognized === 'boolean'` check
+# sees a real boolean, matching inputLogger.ts's own contract exactly.
+nb_log_input_body <- function(text, recognized) {
   trimmed <- trimws(text)
   if (!nzchar(trimmed)) return(NULL)
   if (nchar(trimmed) > .nb_max_logged_length) {
     trimmed <- substr(trimmed, 1, .nb_max_logged_length)
   }
-  sprintf('{"text":"%s","interface":"rstudio"}', nb_json_escape_string(trimmed))
+  sprintf(
+    '{"text":"%s","interface":"rstudio","recognized":%s}',
+    nb_json_escape_string(trimmed),
+    if (isTRUE(recognized)) "true" else "false"
+  )
 }
 
 # Fire-and-forget: shells out to the `curl` command-line tool as a
@@ -68,11 +77,11 @@ nb_log_input_body <- function(text) {
 # pre-install it; Windows 10+ ships curl.exe natively) -- if it's somehow
 # missing, this silently does nothing, the same as every other failure
 # path here (unset log URL, empty input, network failure once detached).
-nb_log_input <- function(text) {
+nb_log_input <- function(text, recognized) {
   log_url <- Sys.getenv("NINEBARK_LOG_URL", unset = .nb_default_log_url)
   if (!nzchar(log_url)) return(invisible(NULL))
 
-  body <- nb_log_input_body(text)
+  body <- nb_log_input_body(text, recognized)
   if (is.null(body)) return(invisible(NULL))
 
   # -H "Content-Type: text/plain" is NOT optional -- confirmed via live

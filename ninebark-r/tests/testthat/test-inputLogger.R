@@ -16,38 +16,45 @@ test_that("nb_json_escape_string() escapes backslash, quote, and whitespace cont
 })
 
 test_that("nb_log_input_body() returns NULL for empty or whitespace-only input", {
-  expect_null(nb_log_input_body(""))
-  expect_null(nb_log_input_body("   "))
-  expect_null(nb_log_input_body("\n\t"))
+  expect_null(nb_log_input_body("", recognized = TRUE))
+  expect_null(nb_log_input_body("   ", recognized = TRUE))
+  expect_null(nb_log_input_body("\n\t", recognized = FALSE))
 })
 
-test_that("nb_log_input_body() builds the expected JSON, tagged rstudio", {
+test_that("nb_log_input_body() builds the expected JSON, tagged rstudio, with recognized: true", {
   expect_equal(
-    nb_log_input_body("mean of 1,2,3"),
-    '{"text":"mean of 1,2,3","interface":"rstudio"}'
+    nb_log_input_body("mean of 1,2,3", recognized = TRUE),
+    '{"text":"mean of 1,2,3","interface":"rstudio","recognized":true}'
+  )
+})
+
+test_that("nb_log_input_body() writes a literal lowercase false for recognized = FALSE", {
+  expect_equal(
+    nb_log_input_body("asdkjhaskjdh", recognized = FALSE),
+    '{"text":"asdkjhaskjdh","interface":"rstudio","recognized":false}'
   )
 })
 
 test_that("nb_log_input_body() trims surrounding whitespace before encoding", {
   expect_equal(
-    nb_log_input_body("  let x be 5  "),
-    '{"text":"let x be 5","interface":"rstudio"}'
+    nb_log_input_body("  let x be 5  ", recognized = TRUE),
+    '{"text":"let x be 5","interface":"rstudio","recognized":true}'
   )
 })
 
 test_that("nb_log_input_body() escapes quotes/backslashes inside the text", {
   expect_equal(
-    nb_log_input_body('say "hi" to x\\y'),
-    '{"text":"say \\"hi\\" to x\\\\y","interface":"rstudio"}'
+    nb_log_input_body('say "hi" to x\\y', recognized = TRUE),
+    '{"text":"say \\"hi\\" to x\\\\y","interface":"rstudio","recognized":true}'
   )
 })
 
 test_that("nb_log_input_body() truncates text longer than 2000 characters", {
   long_text <- strrep("a", 2500)
-  body <- nb_log_input_body(long_text)
-  # The body is `{"text":"<2000 a's>","interface":"rstudio"}` -- pull the
-  # text back out and check its length directly rather than hand-computing
-  # the whole expected string.
+  body <- nb_log_input_body(long_text, recognized = TRUE)
+  # The body is `{"text":"<2000 a's>","interface":"rstudio","recognized":true}`
+  # -- pull the text back out and check its length directly rather than
+  # hand-computing the whole expected string.
   extracted <- sub('^\\{"text":"(a*)".*$', "\\1", body)
   expect_equal(nchar(extracted), 2000)
 })
@@ -73,7 +80,7 @@ test_that("nb_log_input() calls curl with the right args for ordinary input", {
     },
     .package = "base"
   )
-  nb_log_input("mean of 1,2,3")
+  nb_log_input("mean of 1,2,3", recognized = TRUE)
 
   expect_length(calls, 1)
   expect_equal(calls[[1]]$command, "curl")
@@ -88,7 +95,7 @@ test_that("nb_log_input() calls curl with the right args for ordinary input", {
   expect_match(data_arg, "^@")
   body_file <- sub("^@", "", data_arg)
   expect_true(file.exists(body_file))
-  expect_equal(readLines(body_file), '{"text":"mean of 1,2,3","interface":"rstudio"}')
+  expect_equal(readLines(body_file), '{"text":"mean of 1,2,3","interface":"rstudio","recognized":true}')
 
   # Regression test for a real bug found via live testing: without an
   # explicit text/plain Content-Type, curl's own default
@@ -100,14 +107,34 @@ test_that("nb_log_input() calls curl with the right args for ordinary input", {
   expect_false(any(grepl(";", calls[[1]]$args, fixed = TRUE)))
 })
 
+test_that("nb_log_input() writes recognized: false when the phrase wasn't understood", {
+  old <- Sys.getenv("NINEBARK_LOG_URL", unset = NA)
+  Sys.setenv(NINEBARK_LOG_URL = "https://example.com/log")
+  on.exit(if (is.na(old)) Sys.unsetenv("NINEBARK_LOG_URL") else Sys.setenv(NINEBARK_LOG_URL = old))
+
+  calls <- list()
+  testthat::local_mocked_bindings(
+    system2 = function(command, args, wait = TRUE, stdout = TRUE, stderr = TRUE) {
+      calls[[length(calls) + 1]] <<- list(args = args)
+      invisible(NULL)
+    },
+    .package = "base"
+  )
+  nb_log_input("asdkjhaskjdh", recognized = FALSE)
+
+  data_arg <- calls[[1]]$args[which(calls[[1]]$args == "-d") + 1]
+  body_file <- sub("^@", "", data_arg)
+  expect_equal(readLines(body_file), '{"text":"asdkjhaskjdh","interface":"rstudio","recognized":false}')
+})
+
 test_that("nb_log_input() never calls curl for empty input", {
   calls <- list()
   testthat::local_mocked_bindings(
     system2 = function(...) { calls[[length(calls) + 1]] <<- TRUE; invisible(NULL) },
     .package = "base"
   )
-  nb_log_input("")
-  nb_log_input("   ")
+  nb_log_input("", recognized = TRUE)
+  nb_log_input("   ", recognized = TRUE)
   expect_length(calls, 0)
 })
 
@@ -121,7 +148,7 @@ test_that("nb_log_input() never calls curl when NINEBARK_LOG_URL is set to an em
     system2 = function(...) { calls[[length(calls) + 1]] <<- TRUE; invisible(NULL) },
     .package = "base"
   )
-  nb_log_input("mean of 1,2,3")
+  nb_log_input("mean of 1,2,3", recognized = TRUE)
   expect_length(calls, 0)
 })
 
@@ -138,7 +165,7 @@ test_that("nb_log_input() posts to a custom NINEBARK_LOG_URL when set", {
     },
     .package = "base"
   )
-  nb_log_input("mean of 1,2,3")
+  nb_log_input("mean of 1,2,3", recognized = TRUE)
 
   expect_length(calls, 1)
   expect_true("https://example.com/custom-endpoint" %in% calls[[1]]$args)
@@ -153,5 +180,5 @@ test_that("nb_log_input() never throws even if system2() errors", {
     system2 = function(...) stop("curl not found"),
     .package = "base"
   )
-  expect_no_error(nb_log_input("mean of 1,2,3"))
+  expect_no_error(nb_log_input("mean of 1,2,3", recognized = TRUE))
 })

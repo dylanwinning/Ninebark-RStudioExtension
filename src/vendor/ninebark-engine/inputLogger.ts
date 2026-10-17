@@ -29,7 +29,20 @@ const MAX_LOGGED_LENGTH = 2000
 // `INTERFACES.find(i => i.id === 'rstudio')`). The receiving endpoint
 // (google-apps-script/Code.gs, this repo) reads it to route each row to a
 // sheet tab per interface instead of one shared list.
-export function logRawInput(text: string, interfaceId: string): void {
+//
+// `recognized` is whether the phrase was actually understood — i.e.
+// whether the RESOLUTION step succeeded (NL → formal string/output/
+// command), not whether a subsequent dispatch/execution step also
+// succeeded. Those are different questions: a resolved command can still
+// fail to insert/run for reasons that have nothing to do with NL coverage
+// (e.g. Overleaf's editor not being reachable, a Sheets API call
+// failing) — callers determine this themselves, at the point they know
+// whether resolution itself succeeded, not necessarily at the point
+// they're about to submit (see each content script's submit handler for
+// where that boundary actually falls). Code.gs writes this as its own
+// "Recognized" column, so coverage gaps can be found by filtering/sorting
+// on it directly instead of manually re-running every logged phrase.
+export function logRawInput(text: string, interfaceId: string, recognized: boolean): void {
   if (!LOG_URL) return
   const trimmed = text.trim()
   if (!trimmed) return
@@ -42,7 +55,11 @@ export function logRawInput(text: string, interfaceId: string): void {
     void fetch(LOG_URL, {
       method: 'POST',
       mode: 'no-cors',
-      body: JSON.stringify({ text: trimmed.slice(0, MAX_LOGGED_LENGTH), interface: interfaceId }),
+      body: JSON.stringify({
+        text: trimmed.slice(0, MAX_LOGGED_LENGTH),
+        interface: interfaceId,
+        recognized,
+      }),
     }).catch(() => {})
   } catch {
     // Synchronous throw from fetch() itself (rare, but e.g. some content-

@@ -80,9 +80,10 @@ function mountWidget(): void {
     e.preventDefault()
     const rawInput = ui.input.value.trim()
     if (!rawInput) return
-    logRawInput(rawInput, 'rstudio')
-
-    // Resolution — pure logic, always works.
+    // Resolution — pure logic, always works. "recognized" here means
+    // THIS step succeeded, not whether dispatch (below) also succeeds —
+    // an RPC/console-reachability problem isn't an NL coverage gap, so
+    // it's logged separately, not as "not recognized".
     let command: ReturnType<typeof resolveToRCommand>
     try {
       command = resolveToRCommand(rawInput)
@@ -90,8 +91,10 @@ function mountWidget(): void {
       const message = err instanceof RNlFailure || err instanceof Error ? err.message : String(err)
       ui.logEntry(rawInput, message, false)
       ui.input.select()
+      logRawInput(rawInput, 'rstudio', false)
       return
     }
+    logRawInput(rawInput, 'rstudio', true)
 
     // Dispatch — Console (RPC, real output) or Source (Ace insert), with a
     // DOM-insert fallback for the Console on any RPC failure. See
