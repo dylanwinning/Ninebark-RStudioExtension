@@ -21,11 +21,15 @@ function tryClear(text: string): string | null {
   }
   // "clear x" / "remove x and y" / "rm x, y, z" — a comma/"and"-separated
   // list of bare identifiers, anchored. The structure alone rules out
-  // "clear the plot" (space, not a separator).
+  // "clear the plot" (space, not a separator). "remove duplicates" is
+  // deliberately excluded here even though it's structurally identical —
+  // it's rDataCleaning.ts's "remove duplicate rows" vocabulary, and a
+  // workspace variable actually named "duplicates" is a vanishingly rare
+  // coincidence next to that much more common meaning.
   const m = text.match(/^(?:clear|remove|rm|delete)\s+((?:[A-Za-z][\w.]*)(?:\s*(?:,|and)\s*[A-Za-z][\w.]*)*)(?:\s+from\s+the\s+workspace)?$/i)
   if (m) {
     const names = m[1].split(/\s*(?:,|and)\s*/i).map(s => s.trim()).filter(Boolean)
-    if (names.length > 0 && names.every(n => /^[A-Za-z][\w.]*$/.test(n)) && !names.some(n => /^all$/i.test(n))) {
+    if (names.length > 0 && names.every(n => /^[A-Za-z][\w.]*$/.test(n)) && !names.some(n => /^(?:all|duplicates?)$/i.test(n))) {
       return `rm(${names.join(', ')})`
     }
   }

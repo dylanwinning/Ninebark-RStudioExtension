@@ -220,7 +220,6 @@ describe('other inspection commands worth covering ("anything missing")', () => 
     ['Summarize df', 'summary(df)'],
     ['Duplicated rows in df', 'df[duplicated(df), ]'],
     ['The number of duplicate rows in df', 'sum(duplicated(df))'],
-    ['Remove duplicate rows from df', 'unique(df)'],
     ['The unique values in column age of df', 'unique(df$age)'],
     ['The number of unique values in column age of df', 'length(unique(df$age))'],
     ['The levels of column grade of df', 'levels(factor(df$grade))'],
@@ -228,8 +227,6 @@ describe('other inspection commands worth covering ("anything missing")', () => 
     ['Is df a data frame', 'is.data.frame(df)'],
     ['The row names of df', 'rownames(df)'],
     ['Is df empty', 'nrow(df) == 0'],
-    ['Remove missing values from df', 'na.omit(df)'],
-    ['The complete cases of df', 'df[complete.cases(df), ]'],
   ])('%s -> %s', (phrase, expected) => {
     expect(recognizeDataInspection(phrase)).toBe(expected)
   })

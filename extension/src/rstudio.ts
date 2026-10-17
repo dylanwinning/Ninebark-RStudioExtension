@@ -25,9 +25,14 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'the column names of df', 'the dimensions of df', 'the data types of every column of df',
     'count the missing values in each column of df',
   ] },
+  { title: 'Clean & filter data', examples: [
+    'remove rows with missing values in income', 'remove duplicate rows from the dataset',
+    'keep only observations where age is greater than 18', 'keep only the columns age, income, and education',
+    'sort the dataset by income from highest to lowest', 'rename educ to education',
+    'convert gender into a categorical variable', 'replace missing values in income with the median income',
+  ] },
   { title: 'Vectors & data frames', examples: [
-    'let x be a vector of 1,2,3,4,5', 'filter df where age is greater than 30',
-    'select the columns name and age from df', 'sort df by age descending',
+    'let x be a vector of 1,2,3,4,5', 'a data frame with columns name and age',
   ] },
   { title: 'Plotting', examples: [
     'scatter plot of x and y', 'histogram of x', 'boxplot of x by group',

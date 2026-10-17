@@ -215,11 +215,21 @@ In plain English:
   dataset" / "the data" / "it" — with no real variable named normalizes to
   `df`, the same convention every example elsewhere here already uses; R
   itself reports a clear error if that's not actually your data frame's name.
-- **Vectors & data-frame wrangling**: "let x be a vector of 1,2,3,4,5",
-  "filter df where age is greater than 30", "select the columns name and
-  age from df", "sort df by age descending", "rename the column x to y in
-  df", "remove the column x from df", "a data frame with columns name and
-  age".
+- **Cleaning & filtering data**: "remove rows with missing values in
+  income" (also: "remove all rows that contain any missing values",
+  `na.omit`), "remove duplicate rows from the dataset", "keep only
+  observations where age is greater than 18" (also: "between 18 and 30",
+  "and income is above 30000" — compound and/or conditions), "keep only
+  the columns age, income, and education", "remove the column
+  participant_id", "sort the dataset by income from highest to lowest",
+  "rename educ to education", "convert gender into a categorical
+  variable" (also: numeric, character, integer, Date, logical), "rename
+  all column names to lowercase with underscores instead of spaces",
+  "replace missing values in income with the median income" (mean or
+  median), "remove observations with income more than three standard
+  deviations above or below its mean".
+- **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
+  data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)
   from 0 to 2*pi", "histogram of x", "boxplot of x by group", "a bar chart
   of counts", "a line chart of y vs x", "add a title 'Results'", "label the

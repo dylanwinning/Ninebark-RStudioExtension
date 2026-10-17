@@ -94,9 +94,18 @@ order:
    loaded), `rDataInspection` (head/tail/colnames/dim/dtypes/missing
    values — a `DATA_REF` placeholder convention maps "my dataset"/"the
    data"/"it" to the literal `df` when no real name is given, same
-   convention the README's examples already use), `rVectorsAndDataFrames`
-   (filter/select/sort/rename — wrangling a data frame already in R, not
-   importing or inspecting it), `rPlotting` (plot/hist/boxplot/ggplot2),
+   convention the README's examples already use — STRICTLY read-only;
+   anything that actually drops/replaces data lives in rDataCleaning.ts,
+   not here), `rDataCleaning` (filter/keep-only rows including compound
+   and/or and "between" conditions, remove-missing/remove-duplicate rows,
+   select/remove columns, sort, rename, type conversion, bulk column-name
+   cleanup, missing-value imputation, outlier removal — reuses the same
+   `DATA_REF` convention; see its own header comment for the safety
+   convention around which operations auto-assign back to `df` and which
+   stay a bare, non-mutating expression), `rVectorsAndDataFrames` (bare
+   vector/data-frame-skeleton construction only — "a vector of 1,2,3", "a
+   data frame with columns x and y" — NOT wrangling an existing one, that
+   moved to rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),
    `rStrings` (paste/nchar/gsub/strsplit), `rCalculus` (D()/integrate()),
    `rLinearAlgebra` (det/solve/t/%*%/eigen), `rAssignment` (`let x be …`).
    Recognizers that need to resolve a
@@ -157,6 +166,27 @@ accept that "show me X" specifically becomes an unsupported phrasing
 rather than risk a silent wrong guess. When adding a new "bare X" fallback
 anywhere in this codebase, test it against a bare nonsense word, not just
 the phrasing it's meant to catch.
+
+**Cross-file generic-pattern collision gotcha** (the data-cleaning category's
+version of the filename-swallowing bug above, one file apart instead of one
+regex apart): `rWorkspace.ts`'s bare `remove <identifier list>` -> `rm(...)`
+pattern runs BEFORE `rDataCleaning.ts` in `resolveRPhrase.ts`'s chain, and
+structurally "remove duplicates" is indistinguishable from "remove x" — a
+single bare identifier after a removal verb. Without an explicit exclusion,
+`rWorkspace` claimed "remove duplicates" first and produced `rm(duplicates)`
+instead of `rDataCleaning.ts`'s intended `unique(df)`. Caught by the probe
+script, not a false sense of safety from the regex looking "obviously fine"
+in isolation — it only breaks once a SECOND file's vocabulary collides with
+a word the first file's permissive pattern already accepts. The fix:
+excluded `duplicates`/`duplicate` by name from `rWorkspace.ts`'s identifier
+list (same spot as its pre-existing `all` exclusion), rather than
+reordering the whole chain (which would risk the opposite problem — a real
+workspace variable actually named e.g. `df_filtered` getting caught by a
+later file's broader pattern instead). When adding vocabulary to any new
+file, re-probe common short, generic-sounding phrases ("remove X", "clear
+X") against the FULL pipeline, not just the new file's own recognizer in
+isolation — a collision shows up only in `resolveToRStatement()`, never in
+a bare `recognizeDataCleaning()` call.
 
 ## Vendored code — do not edit (mostly)
 

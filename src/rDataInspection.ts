@@ -296,29 +296,27 @@ function tryMissingValues(text: string): string | null {
   m = t.match(new RegExp(`^how\\s+many\\s+missing\\s+values?\\s+does\\s+(${DATA_REF})\\s+have\\??$`, 'i'))
   if (m) return `sum(is.na(${normalizeDataRef(m[1])}))`
 
-  // Complete-cases / duplicate-row housekeeping — the natural neighbors of
-  // "missing values" once you're asking these questions at all.
-  m = t.match(new RegExp(`^(?:remove|drop)\\s+(?:rows?\\s+with\\s+)?missing\\s+values?\\s+from\\s+(${DATA_REF})$`, 'i'))
-  if (m) return `na.omit(${normalizeDataRef(m[1])})`
-  m = t.match(new RegExp(`^(?:the\\s+)?complete\\s+cases\\s+(?:of|in)\\s+(${DATA_REF})$`, 'i'))
-  if (m) { const d = normalizeDataRef(m[1]); return `${d}[complete.cases(${d}), ]` }
+  // NOTE: actually REMOVING rows with missing values ("remove rows with
+  // missing values in income", "remove all rows that contain any missing
+  // values") lives in rDataCleaning.ts, not here — this file is read-only
+  // inspection; dropping rows is a cleaning action, a different concern
+  // (see that file's own header comment).
 
   return null
 }
 
 // "duplicated rows in df" / "the number of duplicate rows in df" /
-// "remove duplicate rows from df" / "the unique values in column age of
-// df" / "the number of unique values in column age of df" — rounds out
-// "inspect the data" with the other most common data-cleanliness
-// questions, past just missing values.
+// "the unique values in column age of df" / "the number of unique values
+// in column age of df" — rounds out "inspect the data" with the other
+// most common data-cleanliness questions, past just missing values.
+// NOTE: actually REMOVING duplicate rows ("remove duplicate rows from the
+// dataset") lives in rDataCleaning.ts — this file stays read-only.
 function tryDuplicatesAndUnique(text: string): string | null {
   const t = stripShowLead(text)
   let m = t.match(new RegExp(`^(?:the\\s+)?(?:number|count)\\s+of\\s+duplicate\\s+rows?\\s+(?:in|of)\\s+(${DATA_REF})$`, 'i'))
   if (m) { const d = normalizeDataRef(m[1]); return `sum(duplicated(${d}))` }
   m = t.match(new RegExp(`^duplicated?\\s+rows?\\s+(?:in|of)\\s+(${DATA_REF})$`, 'i'))
   if (m) { const d = normalizeDataRef(m[1]); return `${d}[duplicated(${d}), ]` }
-  m = t.match(new RegExp(`^(?:remove|drop)\\s+duplicate\\s+rows?\\s+from\\s+(${DATA_REF})$`, 'i'))
-  if (m) return `unique(${normalizeDataRef(m[1])})`
 
   m = t.match(new RegExp(`^(?:the\\s+)?(?:number|count)\\s+of\\s+unique\\s+values?\\s+in\\s+column\\s+(${IDENT})\\s+(?:of|in)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `length(unique(${normalizeDataRef(m[2])}$${m[1]}))`
