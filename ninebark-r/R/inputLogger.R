@@ -75,38 +75,42 @@ nb_log_input <- function(text) {
   body <- nb_log_input_body(text)
   if (is.null(body)) return(invisible(NULL))
 
-  tryCatch(
+  # -H "Content-Type: text/plain" is NOT optional -- confirmed via live
+  # testing that Code.gs's doPost() only populates e.postData.contents
+  # (what it JSON.parse()s) correctly for text/plain; curl's own default
+  # Content-Type, without this header, is application/x-www-form-urlencoded,
+  # under which Apps Script appears to parse the body as form data instead,
+  # so e.postData.contents never gets the raw JSON and the write is
+  # silently skipped (caught by Code.gs's own try/catch around JSON.parse
+  # -- no error surfaces anywhere, not even an "Unknown" row).
+  # inputLogger.ts (the browser version) never hits this: a browser's
+  # fetch() with no Content-Type set defaults a plain-string body to
+  # text/plain automatically, a DIFFERENT default than curl's.
+  #
+  # The body is written to a TEMP FILE and passed as -d @file, rather than
+  # as a command-line argument, rather than fighting this R build's
+  # system2() any further over how it shell-quotes arguments -- confirmed
+  # directly that an argument containing a semicolon gets split by the
+  # shell system2() invokes curl through (a literal "sh: b: command not
+  # found" from an arg containing ";b"), and even after removing the
+  # semicolon ";charset=UTF-8" suffix entirely, a live round-trip test
+  # through system2() still didn't reach Code.gs correctly while the exact
+  # same curl invocation run directly (no R, no system2) did. Reading the
+  # body from a file sidesteps shell-argument-quoting as a question
+  # entirely, regardless of its exact remaining cause -- curl never sees
+  # the JSON on its command line at all. The temp file is deliberately
+  # left behind rather than cleaned up immediately: this call is detached
+  # (wait = FALSE), so the background curl process may not have read it
+  # yet by the time this function returns; R/the OS clean the temp
+  # directory up on their own.
+  tryCatch({
+    tmp <- tempfile(fileext = ".json")
+    writeLines(body, tmp, useBytes = TRUE)
     system2(
       "curl",
-      # -H "Content-Type: text/plain" is NOT optional -- confirmed via
-      # live testing that Code.gs's doPost() only populates
-      # e.postData.contents (what it JSON.parse()s) correctly for
-      # text/plain; curl's own default Content-Type, without this header,
-      # is application/x-www-form-urlencoded, under which Apps Script
-      # appears to parse the body as form data instead, so
-      # e.postData.contents never gets the raw JSON and the write is
-      # silently skipped (caught by Code.gs's own try/catch around
-      # JSON.parse -- no error surfaces anywhere, not even an "Unknown"
-      # row). inputLogger.ts (the browser version) never hits this: a
-      # browser's fetch() with no Content-Type set defaults a plain-string
-      # body to text/plain automatically, which is a DIFFERENT default
-      # than curl's -- the two clients were never actually sending the
-      # same request shape until this header was added here.
-      #
-      # Deliberately NO ";charset=UTF-8" suffix -- also confirmed via live
-      # testing that this base R's system2() does not safely escape a
-      # semicolon in an argument when invoking curl: it gets interpreted
-      # as a shell command separator (confirmed directly: an arg
-      # containing ";b" produced a literal "sh: b: command not found"),
-      # splitting the command and breaking the whole call. Apps Script
-      # only needs the base MIME type to populate e.postData.contents
-      # correctly, so the charset parameter isn't needed anyway -- the
-      # safe fix is leaving it off entirely, not trying to out-escape
-      # system2()'s own quoting.
-      args = c("-s", "-X", "POST", "-H", "Content-Type: text/plain", "-d", body, log_url),
+      args = c("-s", "-X", "POST", "-H", "Content-Type: text/plain", "-d", paste0("@", tmp), log_url),
       wait = FALSE, stdout = FALSE, stderr = FALSE
-    ),
-    error = function(e) invisible(NULL)
-  )
+    )
+  }, error = function(e) invisible(NULL))
   invisible(NULL)
 }

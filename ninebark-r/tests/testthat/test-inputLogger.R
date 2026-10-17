@@ -80,15 +80,22 @@ test_that("nb_log_input() calls curl with the right args for ordinary input", {
   expect_false(calls[[1]]$wait)
   expect_true("-X" %in% calls[[1]]$args)
   expect_true("POST" %in% calls[[1]]$args)
-  expect_true('{"text":"mean of 1,2,3","interface":"rstudio"}' %in% calls[[1]]$args)
+
+  # The body is passed as -d @<tempfile>, not as a literal argument (see
+  # nb_log_input()'s own comment for why) -- find that arg, strip the "@",
+  # and check the FILE's contents instead of the argument string itself.
+  data_arg <- calls[[1]]$args[which(calls[[1]]$args == "-d") + 1]
+  expect_match(data_arg, "^@")
+  body_file <- sub("^@", "", data_arg)
+  expect_true(file.exists(body_file))
+  expect_equal(readLines(body_file), '{"text":"mean of 1,2,3","interface":"rstudio"}')
+
   # Regression test for a real bug found via live testing: without an
   # explicit text/plain Content-Type, curl's own default
   # (application/x-www-form-urlencoded) makes Code.gs's doPost() silently
   # fail to parse the body, so nothing gets written -- no error, no
   # "Unknown" row, nothing. See nb_log_input()'s own comment for the full
-  # story. No ";charset=UTF-8" suffix -- a second real bug, also found via
-  # live testing: this R build's system2() doesn't safely escape a
-  # semicolon in an argument, which breaks the whole curl invocation.
+  # story.
   expect_true("Content-Type: text/plain" %in% calls[[1]]$args)
   expect_false(any(grepl(";", calls[[1]]$args, fixed = TRUE)))
 })
