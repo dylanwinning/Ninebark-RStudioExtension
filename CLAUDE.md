@@ -108,7 +108,15 @@ order:
    condition grammar `rDataCleaning.ts` exports, recoding, binning into
    named groups, standardizing, log transforms, date-part extraction,
    percent change, merge/append, pivot_longer/pivot_wider skeletons, rank
-   within group), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
+   within group), `rDescriptiveStats` (the same statistics vocabulary
+   every other Ninebark interface already has for literal lists — "mean
+   of 1,2,3,4,5" — pointed at a data-frame COLUMN instead: mean/median/sd/
+   var/min/max/range/IQR/percentiles/frequency & contingency tables/
+   grouped stats/correlation, every one with `na.rm = TRUE` since a real
+   column can have missing values where a literal list can't; runs FIRST
+   in the native chain so a bare identifier like "income" is claimed here
+   before a literal list ever reaches tier-1/tier-2, which still handle
+   that case exactly as before), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
    construction only — "a vector of 1,2,3", "a data frame with columns x
    and y" — NOT wrangling an existing one, that moved to
    rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),

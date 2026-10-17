@@ -41,6 +41,14 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'merge the datasets students and grades using student_id',
     'rank participants by score within each treatment group',
   ] },
+  { title: 'Describe data', examples: [
+    'the mean of income', 'the standard deviation of score',
+    'show the minimum, maximum, and range of income', 'the interquartile range of income',
+    'the 10th, 25th, 50th, 75th, and 90th percentiles of score',
+    'create a frequency table for education', 'create a contingency table of gender by treatment',
+    'the mean, median, and standard deviation of score for each treatment group',
+    'the correlation between study_hours and score',
+  ] },
   { title: 'Vectors & data frames', examples: [
     'let x be a vector of 1,2,3,4,5', 'a data frame with columns name and age',
   ] },

@@ -246,6 +246,22 @@ In plain English:
   "errors until you `install.packages()`" rule as the other optional
   packages above), "rank participants by score within each treatment
   group".
+- **Descriptive statistics on a data-frame column**: the same statistics
+  vocabulary above, but pointed at a column instead of a literal list —
+  "the mean of income" (also: median, standard deviation — "std dev"/
+  "stdev"/"sd" all work — variance), "show the minimum, maximum, and range
+  of income" (also each on its own), "the interquartile range of income",
+  "the 10th, 25th, 50th, 75th, and 90th percentiles of score", "create a
+  frequency table for education", "the percentage of observations in each
+  education category" (also: "proportion", which stays 0-1 rather than
+  ×100 — a genuinely different number), "create a contingency table of
+  gender by treatment", "the mean, median, and standard deviation of score
+  for each treatment group" (any subset of this vocabulary's own stat
+  words works, not just those three), "the correlation between
+  study_hours and score". Every one of these passes `na.rm = TRUE` (or
+  `cor()`'s equivalent, `use = "complete.obs"`) — unlike a literal list, a
+  real column is one `rDataCleaning.ts` category away from having missing
+  values, and base R silently returns `NA` without it.
 - **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
   data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)
