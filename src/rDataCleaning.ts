@@ -57,16 +57,24 @@ const COMPARATORS: Array<[RegExp, string]> = [
   [/equal to|equals/i, '=='],
 ]
 
-// "age is between 18 and 30" -> (age >= 18 & age <= 30); a single
+// "age is between 18 and 30" -> (df$age >= 18 & df$age <= 30); a single
 // comparator clause otherwise. Never a compound and/or — that's handled one
 // level up, in translateCondition, so this always returns ONE term.
-function translateSingleCondition(cond: string): string | null {
+// `dfName` is REQUIRED on every column reference this produces: base R's
+// `[.data.frame` does not do dplyr-style NSE, so a bare `age > 18` inside
+// `df[age > 18, ]` throws "object 'age' not found" — confirmed with a real
+// R session, not assumed. Every column mentioned in a condition must come
+// out as `${dfName}$column`, never bare.
+function translateSingleCondition(cond: string, dfName: string): string | null {
   const c = cond.trim()
   const between = c.match(new RegExp(`^(${IDENT})\\s+is\\s+between\\s+(.+?)\\s+and\\s+(.+)$`, 'i'))
-  if (between) return `(${between[1]} >= ${between[2].trim()} & ${between[1]} <= ${between[3].trim()})`
+  if (between) {
+    const col = `${dfName}$${between[1]}`
+    return `(${col} >= ${between[2].trim()} & ${col} <= ${between[3].trim()})`
+  }
   for (const [re, op] of COMPARATORS) {
     const m = c.match(new RegExp(`^(${IDENT})\\s+is\\s+(?:${re.source})\\s+(.+)$`, 'i'))
-    if (m) return `${m[1]}${op}${m[m.length - 1].trim()}`
+    if (m) return `${dfName}$${m[1]}${op}${m[m.length - 1].trim()}`
   }
   return null
 }
@@ -86,19 +94,21 @@ function splitTopLevelClauses(cond: string, conj: 'and' | 'or'): string[] {
 // is above 30000" (between + compound and) / "age is under 10 or age is
 // over 60" (compound or). Mixing and+or in one condition isn't supported —
 // genuinely ambiguous without parens, and none of this vocabulary's target
-// phrasings need it.
-function translateCondition(cond: string): string | null {
+// phrasings need it. Exported — rDataTransform.ts's binary-indicator
+// variables ("1 when score is at least 60, 0 otherwise") reuse this same
+// condition grammar rather than duplicating it.
+export function translateCondition(cond: string, dfName: string): string | null {
   const andClauses = splitTopLevelClauses(cond, 'and')
   if (andClauses.length > 1) {
-    const parts = andClauses.map(translateSingleCondition)
+    const parts = andClauses.map(c => translateSingleCondition(c, dfName))
     return parts.every((p): p is string => p !== null) ? parts.join(' & ') : null
   }
   const orClauses = splitTopLevelClauses(cond, 'or')
   if (orClauses.length > 1) {
-    const parts = orClauses.map(translateSingleCondition)
+    const parts = orClauses.map(c => translateSingleCondition(c, dfName))
     return parts.every((p): p is string => p !== null) ? parts.join(' | ') : null
   }
-  return translateSingleCondition(cond)
+  return translateSingleCondition(cond, dfName)
 }
 
 // ── Filtering rows ───────────────────────────────────────────────────────
@@ -112,12 +122,12 @@ function tryFilterRows(text: string): string | null {
     ?? text.match(new RegExp(`^(?:show|find)\\s+(?:the\\s+)?rows?\\s+(?:of|in)\\s+(${IDENT})\\s+where\\s+(.+)$`, 'i'))
     ?? text.match(new RegExp(`^keep\\s+only\\s+(?:the\\s+)?(?:rows?|observations?|records?)\\s+(?:of|in)\\s+(${IDENT})\\s+where\\s+(.+)$`, 'i'))
   if (m) {
-    const cond = translateCondition(m[2])
+    const cond = translateCondition(m[2], m[1])
     return cond ? `${m[1]}[${cond}, ]` : null
   }
   m = text.match(new RegExp(`^keep\\s+(?:only\\s+)?(?:the\\s+)?(?:rows?|observations?|records?)\\s+where\\s+(.+)$`, 'i'))
   if (m) {
-    const cond = translateCondition(m[1])
+    const cond = translateCondition(m[1], 'df')
     return cond ? `df[${cond}, ]` : null
   }
   return null

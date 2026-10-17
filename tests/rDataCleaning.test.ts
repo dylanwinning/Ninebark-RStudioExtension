@@ -70,12 +70,12 @@ describe('13. "Remove duplicate rows from the dataset." — duplicate rows', () 
 
 describe('14. "Keep only observations where age is greater than 18." — single-condition row filter', () => {
   it.each([
-    ['Keep only observations where age is greater than 18.', 'df[age>18, ]'],
-    ['keep observations where age is greater than 18', 'df[age>18, ]'],
-    ['keep only rows where age is greater than 18', 'df[age>18, ]'],
-    ['keep rows where age is above 18', 'df[age>18, ]'],
-    ['keep only records where age is at least 18', 'df[age>=18, ]'],
-    ['filter df where age is greater than 30', 'df[age>30, ]'],
+    ['Keep only observations where age is greater than 18.', 'df[df$age>18, ]'],
+    ['keep observations where age is greater than 18', 'df[df$age>18, ]'],
+    ['keep only rows where age is greater than 18', 'df[df$age>18, ]'],
+    ['keep rows where age is above 18', 'df[df$age>18, ]'],
+    ['keep only records where age is at least 18', 'df[df$age>=18, ]'],
+    ['filter df where age is greater than 30', 'df[df$age>30, ]'],
   ])('%s -> %s', (phrase, expected) => {
     expect(resolveToRStatement(phrase)).toBe(expected)
   })
@@ -85,18 +85,18 @@ describe('15. "Keep observations where age is between 18 and 30 and income is ab
   it.each([
     [
       'Keep observations where age is between 18 and 30 and income is above 30000.',
-      'df[(age >= 18 & age <= 30) & income>30000, ]',
+      'df[(df$age >= 18 & df$age <= 30) & df$income>30000, ]',
     ],
-    ['keep only observations where age is between 18 and 30', 'df[(age >= 18 & age <= 30), ]'],
-    ['keep rows where age is over 18 and income is below 50000', 'df[age>18 & income<50000, ]'],
-    ['keep observations where age is under 10 or age is over 60', 'df[age<10 | age>60, ]'],
+    ['keep only observations where age is between 18 and 30', 'df[(df$age >= 18 & df$age <= 30), ]'],
+    ['keep rows where age is over 18 and income is below 50000', 'df[df$age>18 & df$income<50000, ]'],
+    ['keep observations where age is under 10 or age is over 60', 'df[df$age<10 | df$age>60, ]'],
   ])('%s -> %s', (phrase, expected) => {
     expect(resolveToRStatement(phrase)).toBe(expected)
   })
 
   it('"between" never gets mis-split on its own internal "and" when combined with a further AND clause', () => {
     expect(resolveToRStatement('keep rows where age is between 18 and 30 and income is between 30000 and 60000'))
-      .toBe('df[(age >= 18 & age <= 30) & (income >= 30000 & income <= 60000), ]')
+      .toBe('df[(df$age >= 18 & df$age <= 30) & (df$income >= 30000 & df$income <= 60000), ]')
   })
 })
 

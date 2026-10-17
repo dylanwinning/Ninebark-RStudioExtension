@@ -109,7 +109,7 @@ describe('vectors & data frames', () => {
   })
 
   it('filter with a comparison condition', () => {
-    expect(resolveToRStatement('filter df where age is greater than 30')).toBe('df[age>30, ]')
+    expect(resolveToRStatement('filter df where age is greater than 30')).toBe('df[df$age>30, ]')
   })
 
   it('select columns', () => {

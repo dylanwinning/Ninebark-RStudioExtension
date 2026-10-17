@@ -102,10 +102,16 @@ order:
    cleanup, missing-value imputation, outlier removal — reuses the same
    `DATA_REF` convention; see its own header comment for the safety
    convention around which operations auto-assign back to `df` and which
-   stay a bare, non-mutating expression), `rVectorsAndDataFrames` (bare
-   vector/data-frame-skeleton construction only — "a vector of 1,2,3", "a
-   data frame with columns x and y" — NOT wrangling an existing one, that
-   moved to rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),
+   stay a bare, non-mutating expression), `rDataTransform` (deriving NEW
+   columns/datasets from existing ones once they're already clean —
+   arithmetic combinations, binary/indicator variables via the SAME
+   condition grammar `rDataCleaning.ts` exports, recoding, binning into
+   named groups, standardizing, log transforms, date-part extraction,
+   percent change, merge/append, pivot_longer/pivot_wider skeletons, rank
+   within group), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
+   construction only — "a vector of 1,2,3", "a data frame with columns x
+   and y" — NOT wrangling an existing one, that moved to
+   rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),
    `rStrings` (paste/nchar/gsub/strsplit), `rCalculus` (D()/integrate()),
    `rLinearAlgebra` (det/solve/t/%*%/eigen), `rAssignment` (`let x be …`).
    Recognizers that need to resolve a
@@ -187,6 +193,26 @@ file, re-probe common short, generic-sounding phrases ("remove X", "clear
 X") against the FULL pipeline, not just the new file's own recognizer in
 isolation — a collision shows up only in `resolveToRStatement()`, never in
 a bare `recognizeDataCleaning()` call.
+
+**Base-R-subsetting-has-no-NSE gotcha** (a correctness bug, not just an
+unsupported phrasing — found while building the transforms category,
+inherited unnoticed through two earlier categories): `df[cond, ]` in BASE R
+does **not** do dplyr-style non-standard evaluation on `cond` — a bare
+column name like `age` in `df[age > 18, ]` throws `object 'age' not found`
+unless `age` also happens to exist as a free-standing vector, confirmed with
+a real `Rscript`, not assumed from memory. `rDataCleaning.ts`'s condition
+builder (`translateCondition`/`translateSingleCondition`) originally built
+conditions from bare column identifiers (`age>18`) — carried over verbatim
+from the ORIGINAL `rVectorsAndDataFrames.ts` `tryFilter`, which had the same
+bug from day one, just never caught because no test ever ran the output
+through a real R session. Every test that exists only pins the STRING the
+recognizer returns; none of them execute it. The fix: both functions now
+take the target data frame's name explicitly and qualify every column
+reference as `${dfName}$column`. The durable lesson: a string-matching test
+suite proves the recognizer's regex, never the resulting R's correctness —
+spot-check genuinely novel R *shapes* (not just novel phrasings of already-
+proven shapes) in a real `Rscript -e`, especially anything using `[`,
+`$`, or NSE-flavored semantics, before trusting the generated code.
 
 ## Vendored code — do not edit (mostly)
 

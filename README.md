@@ -228,6 +228,24 @@ In plain English:
   "replace missing values in income with the median income" (mean or
   median), "remove observations with income more than three standard
   deviations above or below its mean".
+- **Creating & transforming variables**: "create a column called
+  total_score by adding math_score and reading_score" (also:
+  subtracting/multiplying/dividing, "... that is x plus y"), "create a
+  binary variable called passed that is 1 when score is at least 60 and 0
+  otherwise", "recode M to Male and F to Female in gender", "divide age
+  into groups: under 18, 18-29, 30-49, and 50 or older", "standardize
+  income to have a mean of zero and standard deviation of one", "create a
+  natural-log transformation of income", "square the values in score and
+  save them in a new column called score_squared", "calculate the number
+  of days between start_date and end_date", "extract the year and month
+  from date into separate columns", "calculate the percentage change in
+  sales between consecutive observations", "merge the datasets students
+  and grades using student_id", "append the rows of new_data to data",
+  "convert the dataset from wide format to long format using
+  pivot_longer()" (also `pivot_wider()`; needs the `tidyr` package — same
+  "errors until you `install.packages()`" rule as the other optional
+  packages above), "rank participants by score within each treatment
+  group".
 - **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
   data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)

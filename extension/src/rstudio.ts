@@ -31,6 +31,16 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'sort the dataset by income from highest to lowest', 'rename educ to education',
     'convert gender into a categorical variable', 'replace missing values in income with the median income',
   ] },
+  { title: 'Create & transform variables', examples: [
+    'create a column called total_score by adding math_score and reading_score',
+    'create a binary variable called passed that is 1 when score is at least 60 and 0 otherwise',
+    'recode M to Male and F to Female in gender',
+    'divide age into groups: under 18, 18-29, 30-49, and 50 or older',
+    'standardize income', 'create a natural-log transformation of income',
+    'calculate the number of days between start_date and end_date',
+    'merge the datasets students and grades using student_id',
+    'rank participants by score within each treatment group',
+  ] },
   { title: 'Vectors & data frames', examples: [
     'let x be a vector of 1,2,3,4,5', 'a data frame with columns name and age',
   ] },
