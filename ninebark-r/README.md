@@ -68,8 +68,21 @@ doesn't list a newly installed addin until you do.
 
 ### Updating and uninstalling
 
-To update, rerun the same `install_github(...)` line and restart R. To
-remove it entirely:
+No R package — from GitHub or even CRAN — updates itself; getting a new
+version always means explicitly rerunning the same `install_github(...)`
+line and restarting R. **The Addin tells you when you're behind**: each
+time it opens, it does a quick (bounded to ~2 seconds, so a slow or
+offline network never delays the panel) check against this repo's latest
+version, and if you're running an older one, the log pane's first entry
+names the exact command to paste — no need to check manually or remember
+to do it periodically. This check never blocks the Addin if it fails
+(network down, GitHub unreachable, whatever) — it just silently skips the
+notice that time. Disable it entirely by setting
+`Sys.setenv(NINEBARK_SKIP_UPDATE_CHECK = "true")` (e.g. in your
+`.Rprofile`) if you're on an offline/firewalled network where it would
+just time out on every open.
+
+To remove the package entirely:
 
 ```r
 remove.packages("ninebark")

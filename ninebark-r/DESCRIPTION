@@ -1,6 +1,6 @@
 Package: ninebark
 Title: Type R Commands in Plain English, Right in RStudio
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: person("Dylan", "Winning", email = "dwinning@haverford.edu", role = c("aut", "cre"))
 Description: An RStudio Addin that turns a plain-English phrase ("mean of
     1,2,3,4,5", "let x be 5", "read the csv file data.csv into df", "for i

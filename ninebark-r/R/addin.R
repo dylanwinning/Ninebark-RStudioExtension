@@ -270,7 +270,14 @@ ninebark_addin <- function() {
   ui <- nb_addin_ui()
 
   server <- function(input, output, session) {
-    log_entries <- shiny::reactiveVal(character(0))
+    # Seeds the log with an update notice if one applies (see
+    # R/updateCheck.R) -- runs once, synchronously, right when the Addin
+    # opens, bounded to a couple of seconds so a slow/offline network
+    # can't meaningfully delay the panel becoming usable. New entries from
+    # do_run() get PREPENDED below, so this notice stays visible at the
+    # bottom rather than getting buried above newer activity.
+    update_message <- nb_check_for_update()
+    log_entries <- shiny::reactiveVal(if (is.null(update_message)) character(0) else update_message)
     last_code <- shiny::reactiveVal("")
 
     do_run <- function() {
