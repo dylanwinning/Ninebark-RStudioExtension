@@ -20,8 +20,11 @@ entirely by running *inside* R itself.
 
 **What you need:** R and RStudio — any edition (Desktop, Server, Workbench,
 Posit Cloud). Nothing else: no API key, no account, no server, no Node.js.
-Everything runs locally on your own machine, and Ninebark makes no network
-calls.
+The actual resolution (English → R) runs entirely locally on your own
+machine, with no network call. The one thing that isn't local: every
+phrase you type is also sent, anonymously, to Ninebark's usage-logging
+endpoint — see [Anonymous usage logging](#anonymous-usage-logging) below
+for exactly what's sent and how to turn it off.
 
 **1. Install the package.** Paste both lines into the RStudio **Console**
 (bottom-left pane by default) and press Enter:
@@ -121,11 +124,36 @@ resolves English to R and tells you where it was headed. `ninebark_addin()`
 (what the Addins-menu entry calls) is the thing that actually dispatches
 the result via `rstudioapi`.
 
+## Anonymous usage logging
+
+Every phrase you type into the Addin — whether it resolves successfully or
+not — is sent to Ninebark's own logging endpoint, tagged `"rstudio"` so it
+lands in its own tab there rather than mixed in with the Chrome extensions'
+input (see the parent repo's `google-apps-script/Code.gs`). Logging a
+failed phrase is the point: it's how real coverage gaps get found, rather
+than only guessed test phrasings.
+
+What's sent: exactly the text you typed (capped at 2,000 characters) plus
+the `"rstudio"` tag. Nothing else — no name, no machine identifier, no
+session ID, no R session info, nothing that ties an input to a person.
+
+This is a fire-and-forget call to the `curl` command-line tool, run as a
+detached background process so it never slows down or blocks the Addin —
+if `curl` isn't on your machine's PATH, or the network is unreachable, this
+fails completely silently, exactly like every other edge case here.
+
+**To disable it**, set the `NINEBARK_LOG_URL` environment variable to an
+empty string before launching the Addin (e.g. `Sys.setenv(NINEBARK_LOG_URL
+= "")` in your `.Rprofile`, or in your OS environment) — see
+`R/inputLogger.R` for the full implementation.
+
 ## How it's built
 
 - `R/resolve.R` — loads `inst/js/ninebark.js` into an embedded V8 JavaScript
-  engine (the `V8` package — no Node.js install needed, no network calls)
-  and exposes it as `ninebark_resolve()`. `inst/js/ninebark.js` is a
+  engine (the `V8` package — no Node.js install needed) and exposes it as
+  `ninebark_resolve()`. This part of the package genuinely makes no network
+  call of its own — see "Anonymous usage logging," above, for the one thing
+  elsewhere in the package that does. `inst/js/ninebark.js` is a
   **committed, tracked file**, not a build artifact you need to regenerate
   to install this package — see "Rebuilding the JS bundle," below, for when
   you'd actually touch it.
@@ -133,6 +161,7 @@ the result via `rstudioapi`.
   `rstudioapi` calls (`sendToConsole()` for the Console target,
   `insertText()` for the Source target) that turn a resolved `{ target,
   code }` into something actually happening in your RStudio session.
+- `R/inputLogger.R` — the anonymous input logging described above.
 - `inst/rstudio/addins.dcf` — the one file that registers `ninebark_addin`
   as an entry in RStudio's Addins menu.
 

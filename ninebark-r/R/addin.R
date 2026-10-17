@@ -106,6 +106,11 @@ nb_run_one <- function(raw_text, auto) {
   text <- trimws(raw_text)
   if (!nzchar(text)) return(NULL)
 
+  # Logged here, before resolution, same as inputLogger.ts's callers do --
+  # so a phrase that fails to resolve is still logged (that's the point:
+  # finding real coverage gaps from actual usage). See R/inputLogger.R.
+  nb_log_input(text)
+
   result <- tryCatch(
     ninebark_resolve(text),
     error = function(e) list(ok = FALSE, error = conditionMessage(e))

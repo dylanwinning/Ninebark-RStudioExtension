@@ -11,8 +11,10 @@ Description: An RStudio Addin that turns a plain-English phrase ("mean of
     by reaching into any one frontend's internals. The natural-language
     resolution itself is the same engine as the Ninebark browser extensions
     for Desmos, Google Sheets, Excel, MATLAB Online, and Overleaf, embedded
-    here via the 'V8' package so it runs locally with no network calls and
-    no server-side component.
+    here via the 'V8' package so resolution runs locally with no network
+    call and no server-side component. Separately, every typed phrase is
+    sent anonymously to Ninebark's own usage-logging endpoint; no personal
+    or identifying information is collected.
 License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.2
