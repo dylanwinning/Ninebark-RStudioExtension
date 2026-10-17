@@ -70,14 +70,16 @@ doesn't list a newly installed addin until you do.
 
 No R package — from GitHub or even CRAN — updates itself; getting a new
 version always means explicitly rerunning the same `install_github(...)`
-line and restarting R. **The Addin tells you when you're behind**: each
-time it opens, it does a quick (bounded to ~2 seconds, so a slow or
-offline network never delays the panel) check against this repo's latest
-version, and if you're running an older one, the log pane's first entry
-names the exact command to paste — no need to check manually or remember
-to do it periodically. This check never blocks the Addin if it fails
-(network down, GitHub unreachable, whatever) — it just silently skips the
-notice that time. Disable it entirely by setting
+line and restarting R. **The Addin enforces this itself**: each time it
+opens, it does a quick (bounded to ~2 seconds, so a slow or offline
+network never delays the panel) check against this repo's latest version,
+and if you're running an older one, the input box and Run button are
+disabled and the log pane's first entry names the exact command to
+paste — you can't actually use an out-of-date copy, not just get a notice
+you could ignore. Only a *failed* check (network down, GitHub
+unreachable, whatever) stays silent and lets you proceed as normal — a
+check that can't complete is treated as "nothing to report," never as a
+reason to block. Disable the check entirely by setting
 `Sys.setenv(NINEBARK_SKIP_UPDATE_CHECK = "true")` (e.g. in your
 `.Rprofile`) if you're on an offline/firewalled network where it would
 just time out on every open.
