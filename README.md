@@ -325,6 +325,23 @@ In plain English:
   `logit_model` for the logistic one — the same idea as this project's
   `df` convention, just for a model object), and assumes you've already
   run the earlier command in THIS session that created it.
+- **Sampling, diagnostics, and research workflows**: "set the random seed
+  to 123", "draw a random sample of 100 rows from the dataset", "split the
+  dataset into 80% training data and 20% testing data", "bootstrap the
+  median of income 1,000 times" (also the mean), "calculate a bootstrap
+  95% confidence interval for the median of income" (self-contained — it
+  resamples its own 1,000 replicates, never assumes the previous bullet
+  already ran), "calculate Cohen's d for the difference in score between
+  treatment and control" (needs the `effsize` package), "calculate
+  Cronbach's alpha for questionnaire items q1 through q10" (needs
+  `psych`), "run principal component analysis on all numeric variables
+  after standardizing them" (`prcomp()`'s own `scale. = TRUE` already
+  is the standardizing step), "save the cleaned dataset as
+  cleaned_data.csv" (also `.rds`), "save all the analysis steps performed
+  so far in an R script called analysis.R" (`savehistory()` — the real
+  Console history, which only exists in an actual interactive session;
+  it has nothing to save under e.g. `Rscript`, same limitation as any
+  other base-R use of it).
 - **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
   data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)

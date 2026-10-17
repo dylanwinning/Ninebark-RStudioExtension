@@ -75,6 +75,14 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'fit a logistic regression predicting outcome from age, income, and treatment',
     'convert the logistic regression coefficients into odds ratios',
   ] },
+  { title: 'Sampling & research workflow', examples: [
+    'set the random seed to 123', 'draw a random sample of 100 rows from the dataset',
+    'split the dataset into 80% training data and 20% testing data',
+    'bootstrap the median of income 1,000 times',
+    "calculate Cohen's d for the difference in score between treatment and control",
+    'run principal component analysis on all numeric variables after standardizing them',
+    'save the cleaned dataset as cleaned_data.csv',
+  ] },
   { title: 'Vectors & data frames', examples: [
     'let x be a vector of 1,2,3,4,5', 'a data frame with columns name and age',
   ] },

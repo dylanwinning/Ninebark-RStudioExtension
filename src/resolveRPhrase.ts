@@ -21,10 +21,10 @@
 //      workspace/session/packages, data import, data inspection, data
 //      cleaning & filtering, creating & transforming variables,
 //      descriptive statistics, data visualization, statistical tests &
-//      inference, regression & modeling, vectors & data frames,
-//      plotting, string ops, calculus, linear algebra. Vocabulary with
-//      no Desmos/Sheets/MATLAB equivalent, each producing a complete R
-//      statement.
+//      inference, regression & modeling, sampling/diagnostics/research
+//      workflows, vectors & data frames, plotting, string ops, calculus,
+//      linear algebra. Vocabulary with no Desmos/Sheets/MATLAB
+//      equivalent, each producing a complete R statement.
 //   2. Vendored tier-1  recognizeDesmosPhrase  → formalStringToR
 //   3. Vendored tier-2  nlToFormal             → formalStringToR
 //
@@ -43,6 +43,7 @@ import { recognizeDescriptiveStats } from './rDescriptiveStats'
 import { recognizeDataVisualization } from './rDataVisualization'
 import { recognizeStatisticalTests } from './rStatisticalTests'
 import { recognizeRegression } from './rRegression'
+import { recognizeResearchWorkflow } from './rResearchWorkflow'
 import { recognizeDataCleaning } from './rDataCleaning'
 import { recognizeDataTransform } from './rDataTransform'
 import { recognizeVectorsAndDataFrames } from './rVectorsAndDataFrames'
@@ -187,6 +188,7 @@ function resolveBody(text: string): string {
       recognizeDataVisualization(text) ??
       recognizeStatisticalTests(text) ??
       recognizeRegression(text) ??
+      recognizeResearchWorkflow(text) ??
       recognizeVectorsAndDataFrames(text) ??
       recognizePlotting(text) ??
       recognizeStrings(text) ??

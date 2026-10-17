@@ -141,7 +141,16 @@ order:
    of, so this file adopts a fixed variable name for exactly what each
    phrasing implies it's building on, `model`/`logit_model`, the `df`
    convention's equivalent for a model object rather than a data frame
-   — see its own header comment), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
+   — see its own header comment), `rResearchWorkflow` (reproducibility/
+   sampling — set.seed/random row sampling/train-test split —,
+   bootstrap resampling and bootstrap CIs, Cohen's d (`effsize::`),
+   Cronbach's alpha (`psych::`, "q1 through q10" expands to
+   `paste0("q", 1:10)` rather than forcing a 10-item list), PCA
+   (`prcomp()`'s `scale. = TRUE` already is "after standardizing them"),
+   saving the cleaned dataset, and `savehistory()` for "save my analysis
+   steps" — the real Console history, since this pipeline never sees
+   more than one phrase and has no way to reconstruct a session's worth
+   of commands itself), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
    construction only — "a vector of 1,2,3", "a data frame with columns x
    and y" — NOT wrangling an existing one, that moved to
    rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),
@@ -205,6 +214,27 @@ accept that "show me X" specifically becomes an unsupported phrasing
 rather than risk a silent wrong guess. When adding a new "bare X" fallback
 anywhere in this codebase, test it against a bare nonsense word, not just
 the phrasing it's meant to catch.
+
+**A second, this-repo-only filler-stripper gotcha (`stripRLeadVerb`)**: the
+vendored `stripFiller()` isn't the only thing that strips a leading word
+before a native recognizer sees the text — `resolveRPhrase.ts`'s OWN
+`stripRLeadVerb()` separately strips a leading "run "/"execute "
+(optionally with "the command/statement/code/line") for phrasings like
+"run the command x <- 5". This bit `rResearchWorkflow.ts`'s PCA recognizer:
+its pattern required a literal leading `run\s+` to match "run principal
+component analysis...", but by the time the text reached it, `run ` was
+already gone, so EVERY phrasing of that item failed, including the one the
+category's own literal example used. Caught by the probe script comparing
+the full pipeline's result against a direct call to the recognizer (the
+direct call, with the untouched "run ..." string, "worked" — which is what
+revealed the full-pipeline-only failure). The fix, same shape as the
+`stripFiller` gotcha: make the lead optional in the recognizer's own
+pattern. The durable lesson: this repo has TWO stripping functions a new
+recognizer can be bitten by, not one — `stripFiller` (vendored, strips
+"what is the"/"the"/etc.) AND `stripRLeadVerb` (local to this repo, strips
+"run"/"execute") — and a recognizer whose own trigger word happens to
+overlap with EITHER one needs its own pattern written for the
+POST-both-strips form, not the sentence as literally typed.
 
 **Cross-file generic-pattern collision gotcha** (the data-cleaning category's
 version of the filename-swallowing bug above, one file apart instead of one
