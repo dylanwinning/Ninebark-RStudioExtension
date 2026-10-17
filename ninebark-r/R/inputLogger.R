@@ -78,7 +78,32 @@ nb_log_input <- function(text) {
   tryCatch(
     system2(
       "curl",
-      args = c("-s", "-X", "POST", "-d", body, log_url),
+      # -H "Content-Type: text/plain" is NOT optional -- confirmed via
+      # live testing that Code.gs's doPost() only populates
+      # e.postData.contents (what it JSON.parse()s) correctly for
+      # text/plain; curl's own default Content-Type, without this header,
+      # is application/x-www-form-urlencoded, under which Apps Script
+      # appears to parse the body as form data instead, so
+      # e.postData.contents never gets the raw JSON and the write is
+      # silently skipped (caught by Code.gs's own try/catch around
+      # JSON.parse -- no error surfaces anywhere, not even an "Unknown"
+      # row). inputLogger.ts (the browser version) never hits this: a
+      # browser's fetch() with no Content-Type set defaults a plain-string
+      # body to text/plain automatically, which is a DIFFERENT default
+      # than curl's -- the two clients were never actually sending the
+      # same request shape until this header was added here.
+      #
+      # Deliberately NO ";charset=UTF-8" suffix -- also confirmed via live
+      # testing that this base R's system2() does not safely escape a
+      # semicolon in an argument when invoking curl: it gets interpreted
+      # as a shell command separator (confirmed directly: an arg
+      # containing ";b" produced a literal "sh: b: command not found"),
+      # splitting the command and breaking the whole call. Apps Script
+      # only needs the base MIME type to populate e.postData.contents
+      # correctly, so the charset parameter isn't needed anyway -- the
+      # safe fix is leaving it off entirely, not trying to out-escape
+      # system2()'s own quoting.
+      args = c("-s", "-X", "POST", "-H", "Content-Type: text/plain", "-d", body, log_url),
       wait = FALSE, stdout = FALSE, stderr = FALSE
     ),
     error = function(e) invisible(NULL)
