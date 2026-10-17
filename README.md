@@ -183,10 +183,12 @@ In plain English:
   increment x", "repeat 5 times print hi" — single-statement bodies, the
   same one-phrase-in-one-command-out shape as everything else here; a
   genuinely multi-line loop belongs in the Source editor, typed as raw R.
-- **Workspace & packages**: "clear the workspace", "clear x", "list the
-  variables", "install the package ggplot2", "load the package dplyr",
-  "set the working directory to ~/proj", "save the workspace to
-  session.RData", "get help on mean", "session info".
+- **Workspace & packages**: "clear the workspace" (also "clear
+  everything"), "clear x", "what's in my environment"/"what variables do
+  I have", "install the package ggplot2", "load the package dplyr" (also
+  bare "load dplyr"/"load the dplyr package"/"use dplyr"), "set the
+  working directory to ~/proj", "save the workspace to session.RData",
+  "get help on mean", "session info", "today's date"/"the current date".
 - **Importing & exporting data**: "load data.csv into R", "import data.xlsx
   from the second worksheet" (needs the `readxl` package — not installed by
   default, no base-R equivalent exists for Excel at all, so this one
@@ -210,11 +212,18 @@ In plain English:
   needs the `dplyr` package);
   "count the missing values in each column of df" (also: whole-data-frame
   totals, "which columns have missing values", "the percentage of missing
-  values"), "a summary of df", "duplicated rows in df", "the unique values
-  in column age of df", "is df a data frame". A generic reference — "my
-  dataset" / "the data" / "it" — with no real variable named normalizes to
-  `df`, the same convention every example elsewhere here already uses; R
-  itself reports a clear error if that's not actually your data frame's name.
+  values", or just "are there any missing values?"/"how many missing
+  values are there?" with no data frame named at all — defaults to df
+  like every other unnamed form here), "a summary of df" (also
+  "describe df", and bare "what's in my dataset" with no verb at all),
+  "duplicated rows in df" (also "are there any duplicates?"), "the unique
+  values in column age of df", "is df a data frame". "top 10 rows"/"the
+  first few rows" (no number, no data frame named) also work, defaulting
+  to df and to `head()`'s own default count respectively. A generic
+  reference — "my dataset" / "the data" / "it" — with no real variable
+  named normalizes to `df`, the same convention every example elsewhere
+  here already uses; R itself reports a clear error if that's not
+  actually your data frame's name.
 - **Cleaning & filtering data**: "remove rows with missing values in
   income" (also: "remove all rows that contain any missing values",
   `na.omit`), "remove duplicate rows from the dataset", "keep only
@@ -223,7 +232,9 @@ In plain English:
   the columns age, income, and education", "remove the column
   participant_id", "sort the dataset by income from highest to lowest",
   "rename educ to education", "convert gender into a categorical
-  variable" (also: numeric, character, integer, Date, logical), "rename
+  variable" (also: numeric, character, integer, Date, logical; "change
+  gender to a factor" works too — the everyday verb, same as
+  "convert"/"turn"/"make"), "rename
   all column names to lowercase with underscores instead of spaces",
   "replace missing values in income with the median income" (mean or
   median), "remove observations with income more than three standard
@@ -236,7 +247,9 @@ In plain English:
   into groups: under 18, 18-29, 30-49, and 50 or older", "standardize
   income to have a mean of zero and standard deviation of one", "create a
   natural-log transformation of income", "square the values in score and
-  save them in a new column called score_squared", "calculate the number
+  save them in a new column called score_squared", "round income to 2
+  decimal places" (also bare "round score", to the nearest whole
+  number), "calculate the number
   of days between start_date and end_date", "extract the year and month
   from date into separate columns", "calculate the percentage change in
   sales between consecutive observations", "merge the datasets students
@@ -248,20 +261,26 @@ In plain English:
   group".
 - **Descriptive statistics on a data-frame column**: the same statistics
   vocabulary above, but pointed at a column instead of a literal list —
-  "the mean of income" (also: median, standard deviation — "std dev"/
-  "stdev"/"sd" all work — variance), "show the minimum, maximum, and range
-  of income" (also each on its own), "the interquartile range of income",
-  "the 10th, 25th, 50th, 75th, and 90th percentiles of score", "create a
-  frequency table for education", "the percentage of observations in each
+  "the mean of income" (also: "average"/"avg", median, standard
+  deviation — "std dev"/"stdev"/"sd" all work — variance, and "the sum
+  of"/"total" income), the short noun-noun form works too ("mean score",
+  "median income", "total sales" — no "of," no article needed), "show
+  the minimum, maximum, and range of income" (also each on its own), "the
+  interquartile range of income", "the 10th, 25th, 50th, 75th, and 90th
+  percentiles of score", "create a frequency table for education" (also
+  "count by education"), "the percentage of observations in each
   education category" (also: "proportion", which stays 0-1 rather than
-  ×100 — a genuinely different number), "create a contingency table of
-  gender by treatment", "the mean, median, and standard deviation of score
-  for each treatment group" (any subset of this vocabulary's own stat
-  words works, not just those three), "the correlation between
-  study_hours and score". Every one of these passes `na.rm = TRUE` (or
-  `cor()`'s equivalent, `use = "complete.obs"`) — unlike a literal list, a
-  real column is one `rDataCleaning.ts` category away from having missing
-  values, and base R silently returns `NA` without it.
+  ×100 — a genuinely different number), "the mode of education"/"the most
+  common value of education", "create a contingency table of gender by
+  treatment", "the mean, median, and standard deviation of score for each
+  treatment group" (any subset of this vocabulary's own stat words works,
+  not just those three), "the correlation between study_hours and score"
+  (also "the correlation matrix of df" for every numeric column's
+  pairwise correlations at once). Every one of these passes `na.rm =
+  TRUE` (or `cor()`'s equivalent, `use = "complete.obs"`) — unlike a
+  literal list, a real column is one `rDataCleaning.ts` category away
+  from having missing values, and base R silently returns `NA` without
+  it.
 - **Visualizing a data-frame column**: the same plotting vocabulary below,
   pointed at a column instead of a standalone vector — "create a
   histogram of income", "create a density plot of income", "create a
@@ -296,7 +315,9 @@ In plain English:
   whether mean score differs across treatment groups using a one-way
   ANOVA", "perform Tukey's HSD post-hoc test to compare the group means
   following the ANOVA", "compare score across treatment groups using the
-  Kruskal-Wallis test". A few of these phrasings only name their
+  Kruskal-Wallis test", "test whether score is normally distributed"
+  (also "a shapiro-wilk test for score"). A few of these phrasings only
+  name their
   grouping variable abstractly ("two independent groups", "the group
   means following the ANOVA") with no actual column to default to the
   way `df` is a sensible default elsewhere — those get the correct call

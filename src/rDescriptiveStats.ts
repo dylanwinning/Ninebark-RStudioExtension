@@ -40,7 +40,7 @@ function statPattern(names: string, extra = ''): RegExp {
 
 // ── 41-44. mean / median / standard deviation / variance ───────────────────
 function trySimpleStat(text: string): string | null {
-  let m = text.match(statPattern('mean|average'))
+  let m = text.match(statPattern('mean|average|avg'))
   if (m) return `mean(df$${m[1]}, na.rm = TRUE)`
   m = text.match(statPattern('median'))
   if (m) return `median(df$${m[1]}, na.rm = TRUE)`
@@ -48,6 +48,39 @@ function trySimpleStat(text: string): string | null {
   if (m) return `sd(df$${m[1]}, na.rm = TRUE)`
   m = text.match(statPattern('variance|var'))
   if (m) return `var(df$${m[1]}, na.rm = TRUE)`
+  // Sum/total — not part of the original 12-item category, but as basic
+  // a descriptive statistic as mean/median, and genuinely missing: a
+  // stats vocabulary this wide having no "sum of X" at all was the gap.
+  m = text.match(statPattern('sum|total'))
+  if (m) return `sum(df$${m[1]}, na.rm = TRUE)`
+  return null
+}
+
+// "mean score" / "median income" / "total sales" / "income mean" — the
+// short noun-noun form (stat word and column, nothing else — no "of",
+// no article) people reach for just as often as the fuller phrasings
+// above. Every branch here has its OWN explicit trigger word (mean/
+// median/sum/...), so a bare nonsense word never reaches this without
+// one — BUT a truncated phrase can still misfire: "the mean of" strips
+// down to "mean of", and "of" is itself a syntactically valid identifier
+// (starts with a letter), so without a guard this wrongly resolved to
+// `mean(df$of, na.rm = TRUE)` — caught by this project's OWN existing
+// "the mean of" regression test, not a hypothetical. A small stopword
+// exclusion is the fix: these are common English function words that
+// would never realistically be anyone's real column name.
+const BARE_STAT_FN: Record<string, string> = {
+  mean: 'mean', average: 'mean', avg: 'mean',
+  median: 'median',
+  sum: 'sum', total: 'sum',
+}
+const BARE_STAT_WORDS = Object.keys(BARE_STAT_FN).join('|')
+const STAT_STOPWORDS = new Set(['of', 'the', 'a', 'an', 'in', 'on', 'for', 'to', 'from', 'by', 'with', 'and', 'or', 'is', 'are'])
+
+function tryBareNounStat(text: string): string | null {
+  let m = text.match(new RegExp(`^(${BARE_STAT_WORDS})\\s+(${IDENT})$`, 'i'))
+  if (m && !STAT_STOPWORDS.has(m[2].toLowerCase())) return `${BARE_STAT_FN[m[1].toLowerCase()]}(df$${m[2]}, na.rm = TRUE)`
+  m = text.match(new RegExp(`^(${IDENT})\\s+(${BARE_STAT_WORDS})$`, 'i'))
+  if (m && !STAT_STOPWORDS.has(m[1].toLowerCase())) return `${BARE_STAT_FN[m[2].toLowerCase()]}(df$${m[1]}, na.rm = TRUE)`
   return null
 }
 
@@ -163,6 +196,31 @@ function tryCorrelation(text: string): string | null {
   return `cor(df$${m[1]}, df$${m[2]}, use = "complete.obs")`
 }
 
+// "the correlation matrix of df" / "a correlation matrix for all numeric
+// variables" — ALL pairwise correlations at once, distinct from
+// tryCorrelation above (exactly two named columns) and from
+// rDataVisualization.ts's correlation heatmap (that one PLOTS this same
+// matrix; this one just computes it).
+function tryCorrelationMatrix(text: string): string | null {
+  if (new RegExp(`^${STAT_LEAD}(?:a\\s+)?correlation\\s+matrix\\s+(?:of|for)\\s+(?:df|all\\s+numeric\\s+variables)$`, 'i').test(text)) {
+    return 'cor(df[sapply(df, is.numeric)], use = "complete.obs")'
+  }
+  return null
+}
+
+// "count by treatment" / "how many observations are in each treatment
+// group" — the same table() frequency count as tryFrequencyTable above,
+// reached through the "count/group by" phrasing instead of "a frequency
+// table for," common enough on its own (especially from SQL/pandas
+// habits — "count by X" is literally pandas' groupby(X).size() in words).
+function tryCountByGroup(text: string): string | null {
+  let m = text.match(new RegExp(`^count\\s+by\\s+(${IDENT})$`, 'i'))
+  if (m && !STAT_STOPWORDS.has(m[1].toLowerCase())) return `table(df$${m[1]})`
+  m = text.match(new RegExp(`^how\\s+many\\s+observations\\s+(?:are\\s+)?in\\s+each\\s+(${IDENT})\\s+group$`, 'i'))
+  if (m && !STAT_STOPWORDS.has(m[1].toLowerCase())) return `table(df$${m[1]})`
+  return null
+}
+
 export function recognizeDescriptiveStats(rawText: string): string | null {
   const text = rawText.trim()
   return (
@@ -174,6 +232,9 @@ export function recognizeDescriptiveStats(rawText: string): string | null {
     tryPercentageByCategory(text) ??
     tryContingencyTable(text) ??
     tryGroupedStats(text) ??
-    tryCorrelation(text)
+    tryCorrelation(text) ??
+    tryCorrelationMatrix(text) ??
+    tryCountByGroup(text) ??
+    tryBareNounStat(text)
   )
 }

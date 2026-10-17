@@ -303,6 +303,32 @@ picking one interpretation and hoping — and when there IS a genuine
 coverage gap for the "loser" phrasing, document it as a known, deliberate
 one rather than silently dropping it.
 
+**Preposition/article-leak gotcha** (found during a broad "widen coverage
+for common phrasings" audit pass, not while building a new category — see
+`tests/commonPhrasings.test.ts`): a bare noun-noun recognizer like "mean
+score"/"the sum of X" that captures ANY syntactically-valid identifier
+right after its own trigger word (mean/sum/median/mode/"count by"/…) will
+also match a TRUNCATED phrase where the "identifier" is actually a common
+English preposition or article — "the mean of" strips down to "mean of",
+and "of" itself matches `[A-Za-z][\w.]*` just as well as a real column
+name would, so this originally resolved to `mean(df$of, na.rm = TRUE)`
+instead of failing loud. Caught empirically (an existing regression test
+for exactly this phrase, from the very first data-cleaning category,
+started failing the moment the new bare pattern was added — not something
+reasoned out in advance). The fix: a small stopword set ("of", "the", "a",
+"an", "in", "on", "for", "to", "from", "by", "with", "and", "or", "is",
+"are") excluded from matching as the captured identifier, applied
+everywhere this shape shows up (`rDescriptiveStats.ts`'s bare noun-noun
+stats and "count by X", `rDataInspection.ts`'s mode/most-common-value).
+This is a DIFFERENT failure mode from the bare-identifier-fallback gotcha
+above (that one was about a fallback with NO trigger word at all,
+indistinguishable from gibberish); this one has an explicit trigger word,
+but the trigger word's own most common PREPOSITION ("of") happens to also
+be a syntactically valid identifier. When adding any "TRIGGER_WORD
+(${IDENT})$" pattern, test it against the trigger word followed by nothing
+(a truncated phrase) before trusting it — "mean of", not just "mean of
+income".
+
 ## Vendored code — do not edit (mostly)
 
 `src/vendor/ninebark-engine/` (`desmosNlVocab.ts`, `formalStringTokenizer.ts`,

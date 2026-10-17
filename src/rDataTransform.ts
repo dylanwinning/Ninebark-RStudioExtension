@@ -166,6 +166,23 @@ function trySquare(text: string): string | null {
   return null
 }
 
+// ── Rounding a column ─────────────────────────────────────────────────────
+// "round income to 2 decimal places" / "round income to 2 digits" /
+// "round score" (bare — round()'s own default of 0 digits, the nearest
+// whole number, is exactly what "round score" alone means) / "round
+// income to the nearest whole number".
+function tryRound(text: string): string | null {
+  let m = text.match(new RegExp(`^round\\s+(${IDENT})\\s+to\\s+(\\d+)\\s+decimal\\s+places?$`, 'i'))
+  if (m) return `df$${m[1]} <- round(df$${m[1]}, ${m[2]})`
+  m = text.match(new RegExp(`^round\\s+(${IDENT})\\s+to\\s+(\\d+)\\s+digits?$`, 'i'))
+  if (m) return `df$${m[1]} <- round(df$${m[1]}, ${m[2]})`
+  m = text.match(new RegExp(`^round\\s+(${IDENT})\\s+to\\s+the\\s+nearest\\s+whole\\s+number$`, 'i'))
+  if (m) return `df$${m[1]} <- round(df$${m[1]})`
+  m = text.match(new RegExp(`^round\\s+(${IDENT})$`, 'i'))
+  if (m) return `df$${m[1]} <- round(df$${m[1]})`
+  return null
+}
+
 // ── 33. Days between two dates ────────────────────────────────────────────
 // "calculate the number of days between start_date and end_date" — a
 // computed value, not stored, unless a column name is explicitly given.
@@ -254,6 +271,7 @@ export function recognizeDataTransform(rawText: string): string | null {
     tryStandardize(text) ??
     tryLogTransform(text) ??
     trySquare(text) ??
+    tryRound(text) ??
     tryDaysBetween(text) ??
     tryExtractYearMonth(text) ??
     tryPercentChange(text) ??

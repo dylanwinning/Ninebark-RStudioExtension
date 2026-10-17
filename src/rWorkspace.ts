@@ -16,20 +16,24 @@ const RDATA_FILE = String.raw`[\w./\\ -]+?\.(?:RData|rda)`
 const PKG_NAME = String.raw`[A-Za-z][\w.]*`
 
 function tryClear(text: string): string | null {
-  if (/^(?:clear(?:\s+all)?(?:\s+(?:the\s+)?variables?)?|clear\s+(?:the\s+)?workspace|remove\s+(?:all\s+)?(?:the\s+)?(?:variables?|objects?)|wipe\s+the\s+workspace|start\s+(?:with\s+)?a\s+(?:clean|fresh)\s+(?:workspace|slate|environment))$/i.test(text)) {
+  if (/^(?:clear(?:\s+all)?(?:\s+(?:the\s+)?variables?)?|clear\s+(?:the\s+)?workspace|clear\s+everything|remove\s+(?:all\s+)?(?:the\s+)?(?:variables?|objects?)|remove\s+everything|wipe\s+the\s+workspace|start\s+(?:with\s+)?a\s+(?:clean|fresh)\s+(?:workspace|slate|environment))$/i.test(text)) {
     return 'rm(list = ls())'
   }
   // "clear x" / "remove x and y" / "rm x, y, z" — a comma/"and"-separated
   // list of bare identifiers, anchored. The structure alone rules out
-  // "clear the plot" (space, not a separator). "remove duplicates" is
-  // deliberately excluded here even though it's structurally identical —
-  // it's rDataCleaning.ts's "remove duplicate rows" vocabulary, and a
-  // workspace variable actually named "duplicates" is a vanishingly rare
-  // coincidence next to that much more common meaning.
+  // "clear the plot" (space, not a separator). "remove duplicates" and
+  // "remove everything" are deliberately excluded here even though
+  // they're structurally identical to this pattern — "duplicates" is
+  // rDataCleaning.ts's "remove duplicate rows" vocabulary, and
+  // "everything" is this function's OWN whole-workspace trigger just
+  // above (checked first, so it never actually reaches this far — the
+  // exclusion is defensive, in case that branch's own wording ever
+  // changes); a workspace variable actually named either word is a
+  // vanishingly rare coincidence next to those much more common meanings.
   const m = text.match(/^(?:clear|remove|rm|delete)\s+((?:[A-Za-z][\w.]*)(?:\s*(?:,|and)\s*[A-Za-z][\w.]*)*)(?:\s+from\s+the\s+workspace)?$/i)
   if (m) {
     const names = m[1].split(/\s*(?:,|and)\s*/i).map(s => s.trim()).filter(Boolean)
-    if (names.length > 0 && names.every(n => /^[A-Za-z][\w.]*$/.test(n)) && !names.some(n => /^(?:all|duplicates?)$/i.test(n))) {
+    if (names.length > 0 && names.every(n => /^[A-Za-z][\w.]*$/.test(n)) && !names.some(n => /^(?:all|everything|duplicates?)$/i.test(n))) {
       return `rm(${names.join(', ')})`
     }
   }
@@ -42,7 +46,11 @@ function tryConsole(text: string): string | null {
 }
 
 function tryList(text: string): string | null {
-  if (/^(?:list\s+(?:the\s+)?variables?|list\s+the\s+workspace|what\s+variables\s+(?:are\s+)?(?:defined|in\s+the\s+workspace)|show\s+(?:me\s+)?the\s+variables?|show\s+the\s+workspace|what'?s\s+in\s+the\s+(?:workspace|environment))$/i.test(text)) {
+  // "what's" is stripped by the shared stripFiller() before this ever
+  // sees the text, so "what's in my environment" arrives as bare "in my
+  // environment" — the pattern has to tolerate the lead being gone, not
+  // just present (same gotcha as tryDate's "the current date" above).
+  if (/^(?:list\s+(?:the\s+)?variables?|list\s+the\s+workspace|what\s+variables\s+(?:are\s+)?(?:defined|in\s+the\s+workspace)|what\s+variables\s+do\s+i\s+have|show\s+(?:me\s+)?the\s+variables?|show\s+the\s+workspace|(?:what'?s\s+)?in\s+(?:the|my|this)\s+(?:workspace|environment))$/i.test(text)) {
     return 'ls()'
   }
   if (/^(?:describe\s+the\s+workspace|show\s+the\s+workspace\s+in\s+detail|list\s+(?:the\s+)?variables?\s+with\s+(?:details|structure))$/i.test(text)) {
@@ -69,9 +77,16 @@ function tryPackages(text: string): string | null {
     const pkgs = m[1].split(/\s*(?:,|and)\s*/i).map(s => s.trim()).filter(Boolean)
     return pkgs.length === 1 ? `install.packages(${rStr(pkgs[0])})` : `install.packages(c(${pkgs.map(rStr).join(', ')}))`
   }
-  // "load the package dplyr" / "library dplyr" / "use the tidyverse package" / "require ggplot2"
-  m = text.match(new RegExp(`^(?:load\\s+the\\s+package|library|use\\s+the\\s+package|require\\s+the\\s+package|require|use)\\s+(${PKG_NAME})(?:\\s+package)?$`, 'i'))
-  if (m) return `library(${m[1]})`
+  // "load the package dplyr" / "load dplyr" / "library dplyr" / "use the
+  // tidyverse package" / "require ggplot2". The bare "load X" form
+  // rejects anything ending in .RData/.rda — "load data.RData" is
+  // tryLoad()'s own vocabulary (loading a saved workspace file), checked
+  // below, and this function runs FIRST in the chain, so without this
+  // exclusion "load data.RData" would be misread as a package literally
+  // named "data.RData" before tryLoad ever got a chance — confirmed
+  // empirically, not just reasoned about.
+  m = text.match(new RegExp(`^(?:load|library|use|require)\\s+(?:the\\s+(?:package\\s+)?)?(${PKG_NAME})(?:\\s+package)?$`, 'i'))
+  if (m && !/\.(?:RData|rda)$/i.test(m[1])) return `library(${m[1]})`
   // "is the package dplyr installed" / "check if ggplot2 is installed"
   m = text.match(new RegExp(`^(?:is\\s+the\\s+package\\s+(${PKG_NAME})\\s+installed|check\\s+if\\s+(${PKG_NAME})\\s+is\\s+installed)\\??$`, 'i'))
   if (m) return `requireNamespace(${rStr(m[1] ?? m[2])}, quietly = TRUE)`
@@ -108,6 +123,15 @@ function tryLoad(text: string): string | null {
   return null
 }
 
+function tryDate(text: string): string | null {
+  // "the" is stripped by the shared stripFiller() before this ever sees
+  // the text, so "the current date" arrives as bare "current date" —
+  // the pattern has to tolerate the lead being gone, not just present.
+  if (/^(?:(?:the\s+)?current\s+date|today'?s?\s+date|what\s+is\s+today'?s?\s+date)\??$/i.test(text)) return 'Sys.Date()'
+  if (/^(?:(?:the\s+)?current\s+time|the\s+time\s+right\s+now|what\s+time\s+is\s+it)\??$/i.test(text)) return 'Sys.time()'
+  return null
+}
+
 function tryHelp(text: string): string | null {
   // "get help on mean" / "help with mean" / "what does mean do" / "show the documentation for mean"
   const m = text.match(/^(?:get\s+help\s+(?:on|with|for)|help\s+(?:on|with|for)|show\s+(?:the\s+)?(?:documentation|docs|help)\s+for|what\s+does)\s+([A-Za-z][\w.]*)(?:\s+do)?\??$/i)
@@ -131,6 +155,7 @@ export function recognizeWorkspace(rawText: string): string | null {
     tryPackages(text) ??
     trySave(text) ??
     tryLoad(text) ??
+    tryDate(text) ??
     tryHelp(text) ??
     trySessionInfo(text)
   )

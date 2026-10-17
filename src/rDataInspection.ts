@@ -53,6 +53,11 @@ function tryHead(text: string): string | null {
   const t = stripShowLead(text)
   let m = t.match(new RegExp(`^(?:the\\s+)?(?:first|top)\\s+(\\d+)\\s+(?:rows?|observations?|records?)\\s+of\\s+(${DATA_REF})$`, 'i'))
   if (m) return `head(${normalizeDataRef(m[2])}, ${m[1]})`
+  // Same, but no data frame named at all — "the top 10 rows." / "top 5
+  // rows" — defaults to df, same convention as every other unnamed form
+  // in this file (tryDimensions, tryRowOrColCount, tryMissingValues).
+  m = t.match(/^(?:the\s+)?(?:first|top)\s+(\d+)\s+(?:rows?|observations?|records?)$/i)
+  if (m) return `head(df, ${m[1]})`
   m = t.match(new RegExp(`^(${DATA_REF})(?:'s)?\\s+first\\s+(\\d+)\\s+(?:rows?|observations?|records?)$`, 'i'))
   if (m) return `head(${normalizeDataRef(m[1])}, ${m[2]})`
   m = t.match(new RegExp(`^(?:the\\s+)?head\\s+of\\s+(${DATA_REF})$`, 'i'))
@@ -61,6 +66,10 @@ function tryHead(text: string): string | null {
   if (m) return `head(${normalizeDataRef(m[1])})`
   m = t.match(new RegExp(`^(?:the\\s+)?(?:beginning|start)\\s+of\\s+(${DATA_REF})$`, 'i'))
   if (m) return `head(${normalizeDataRef(m[1])})`
+  // "the first few rows (of df)" — no explicit count at all, head()'s
+  // own default of 6 is exactly what "a few" means here.
+  m = t.match(new RegExp(`^(?:the\\s+)?first\\s+few\\s+(?:rows?|observations?|records?)(?:\\s+of\\s+(${DATA_REF}))?$`, 'i'))
+  if (m) return `head(${normalizeDataRef(m[1] ?? 'df')})`
   m = t.match(new RegExp(`^preview\\s+(?:the\\s+first\\s+(\\d+)\\s+rows?\\s+of\\s+)?(${DATA_REF})$`, 'i'))
   if (m) return m[1] ? `head(${normalizeDataRef(m[2])}, ${m[1]})` : `head(${normalizeDataRef(m[2])})`
   m = t.match(new RegExp(`^(?:look\\s+at|peek\\s+at)\\s+(?:the\\s+first\\s+(\\d+)\\s+rows?\\s+of\\s+)?(${DATA_REF})$`, 'i'))
@@ -98,6 +107,10 @@ function tryTail(text: string): string | null {
   const t = stripShowLead(text)
   let m = t.match(new RegExp(`^(?:the\\s+)?(?:last|bottom)\\s+(\\d+)\\s+(?:rows?|observations?|records?)\\s+of\\s+(${DATA_REF})$`, 'i'))
   if (m) return `tail(${normalizeDataRef(m[2])}, ${m[1]})`
+  // No data frame named at all — "the last 10 rows." / "bottom 5 rows" —
+  // defaults to df, same convention as tryHead's own bare form above.
+  m = t.match(/^(?:the\s+)?(?:last|bottom)\s+(\d+)\s+(?:rows?|observations?|records?)$/i)
+  if (m) return `tail(df, ${m[1]})`
   m = t.match(new RegExp(`^(${DATA_REF})(?:'s)?\\s+last\\s+(\\d+)\\s+(?:rows?|observations?|records?)$`, 'i'))
   if (m) return `tail(${normalizeDataRef(m[1])}, ${m[2]})`
   m = t.match(new RegExp(`^(?:the\\s+)?tail\\s+of\\s+(${DATA_REF})$`, 'i'))
@@ -106,6 +119,10 @@ function tryTail(text: string): string | null {
   if (m) return `tail(${normalizeDataRef(m[1])})`
   m = t.match(new RegExp(`^(?:the\\s+)?end\\s+of\\s+(${DATA_REF})$`, 'i'))
   if (m) return `tail(${normalizeDataRef(m[1])})`
+  // "the last few rows (of df)" — no explicit count, tail()'s own
+  // default of 6 is exactly what "a few" means here.
+  m = t.match(new RegExp(`^(?:the\\s+)?last\\s+few\\s+(?:rows?|observations?|records?)(?:\\s+of\\s+(${DATA_REF}))?$`, 'i'))
+  if (m) return `tail(${normalizeDataRef(m[1] ?? 'df')})`
   return null
 }
 
@@ -174,7 +191,12 @@ function tryDimensions(text: string): string | null {
 // observations/variables in df" (stats terminology for rows/columns).
 function tryRowOrColCount(text: string): string | null {
   const t = stripShowLead(text)
-  let m = t.match(new RegExp(`^(?:the\\s+)?(?:number|count)\\s+of\\s+(?:rows?|observations?|records?)\\s+(?:of|in|for)\\s+(${DATA_REF})$`, 'i'))
+  // No data frame named at all — "the number of rows." / "how many rows
+  // are there?" on its own — defaults to df, same convention as
+  // tryDimensions' own bare "the number of rows and columns" above.
+  if (/^(?:the\s+)?(?:total\s+)?(?:number|count)\s+of\s+(?:rows?|observations?|records?)$/i.test(t)) return 'nrow(df)'
+  if (/^how\s+many\s+(?:rows?|observations?|records?)\s+(?:are|is)\s+there\??$/i.test(t)) return 'nrow(df)'
+  let m = t.match(new RegExp(`^(?:the\\s+)?(?:total\\s+)?(?:number|count)\\s+of\\s+(?:rows?|observations?|records?)\\s+(?:of|in|for)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `nrow(${normalizeDataRef(m[1])})`
   m = t.match(new RegExp(`^(?:the\\s+)?row\\s+count\\s+(?:of|in|for)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `nrow(${normalizeDataRef(m[1])})`
@@ -183,7 +205,9 @@ function tryRowOrColCount(text: string): string | null {
   m = t.match(new RegExp(`^how\\s+many\\s+(?:rows?|observations?|records?)\\s+(?:does\\s+(${DATA_REF})\\s+have|(?:are|is)\\s+(?:in|there\\s+in)\\s+(${DATA_REF}))\\??$`, 'i'))
   if (m) return `nrow(${normalizeDataRef(m[1] ?? m[2])})`
 
-  m = t.match(new RegExp(`^(?:the\\s+)?(?:number|count)\\s+of\\s+(?:columns?|variables?|fields?)\\s+(?:of|in|for)\\s+(${DATA_REF})$`, 'i'))
+  if (/^(?:the\s+)?(?:total\s+)?(?:number|count)\s+of\s+(?:columns?|variables?|fields?)$/i.test(t)) return 'ncol(df)'
+  if (/^how\s+many\s+(?:columns?|variables?|fields?)\s+(?:are|is)\s+there\??$/i.test(t)) return 'ncol(df)'
+  m = t.match(new RegExp(`^(?:the\\s+)?(?:total\\s+)?(?:number|count)\\s+of\\s+(?:columns?|variables?|fields?)\\s+(?:of|in|for)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `ncol(${normalizeDataRef(m[1])})`
   m = t.match(new RegExp(`^(?:the\\s+)?column\\s+count\\s+(?:of|in|for)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `ncol(${normalizeDataRef(m[1])})`
@@ -244,13 +268,25 @@ function tryStructure(text: string): string | null {
   return null
 }
 
-// "a summary of df" / "summarize df" / "summary statistics for df".
+// "a summary of df" / "summarize df" / "summary statistics for df" /
+// "describe df" (pandas-user terminology — df.describe()'s closest base-R
+// equivalent is summary(), not a literal port, since R has no dedicated
+// describe() in base and summary() already gives the same per-column
+// quartile/mean breakdown pandas users expect from the word).
 function trySummary(text: string): string | null {
   const t = stripShowLead(text)
   let m = t.match(new RegExp(`^(?:a\\s+)?summary\\s+(?:statistics\\s+)?(?:of|for)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `summary(${normalizeDataRef(m[1])})`
   m = t.match(new RegExp(`^summarize\\s+(${DATA_REF})$`, 'i'))
   if (m) return `summary(${normalizeDataRef(m[1])})`
+  m = t.match(new RegExp(`^describe\\s+(${DATA_REF})$`, 'i'))
+  if (m) return `summary(${normalizeDataRef(m[1])})`
+  // "what's in my dataset" — the shared stripFiller() upstream already
+  // strips "what's" before this file ever sees the text (confirmed
+  // empirically, same gotcha class as tryHead's own bare-fallback
+  // comment above), so this matches the POST-strip "in my dataset" form
+  // directly rather than the sentence as literally typed.
+  if (/^in\s+(?:my|the|this)\s+(?:data|dataset)$/i.test(t)) return 'summary(df)'
   return null
 }
 
@@ -295,6 +331,14 @@ function tryMissingValues(text: string): string | null {
   if (m) return `sum(is.na(${normalizeDataRef(m[1])}))`
   m = t.match(new RegExp(`^how\\s+many\\s+missing\\s+values?\\s+does\\s+(${DATA_REF})\\s+have\\??$`, 'i'))
   if (m) return `sum(is.na(${normalizeDataRef(m[1])}))`
+  // No data frame named at all — "are there any missing values?" / "how
+  // many missing values are there?" / "are there any NAs?" ("NA" is R's
+  // own term for a missing value, as common a way to ask this as
+  // "missing values" itself) — defaults to df, same convention as every
+  // other unnamed form in this file.
+  if (/^(?:is\s+there\s+any\s+)?missing\s+(?:data|values?)\??$/i.test(t)) return 'anyNA(df)'
+  if (/^are\s+there\s+any\s+(?:missing\s+values?|nas?)\??$/i.test(t)) return 'anyNA(df)'
+  if (/^how\s+many\s+(?:missing\s+values?|nas?)\s+(?:are|is)\s+there\??$/i.test(t)) return 'sum(is.na(df))'
 
   // NOTE: actually REMOVING rows with missing values ("remove rows with
   // missing values in income", "remove all rows that contain any missing
@@ -317,6 +361,11 @@ function tryDuplicatesAndUnique(text: string): string | null {
   if (m) { const d = normalizeDataRef(m[1]); return `sum(duplicated(${d}))` }
   m = t.match(new RegExp(`^duplicated?\\s+rows?\\s+(?:in|of)\\s+(${DATA_REF})$`, 'i'))
   if (m) { const d = normalizeDataRef(m[1]); return `${d}[duplicated(${d}), ]` }
+  // No data frame named at all — "are there any duplicates?" / "how many
+  // duplicate rows are there?" — defaults to df, same convention as every
+  // other unnamed form in this file.
+  if (/^are\s+there\s+any\s+duplicates?\??$/i.test(t)) return 'anyDuplicated(df) > 0'
+  if (/^how\s+many\s+duplicate\s+rows?\s+(?:are|is)\s+there\??$/i.test(t)) return 'sum(duplicated(df))'
 
   m = t.match(new RegExp(`^(?:the\\s+)?(?:number|count)\\s+of\\s+unique\\s+values?\\s+in\\s+column\\s+(${IDENT})\\s+(?:of|in)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `length(unique(${normalizeDataRef(m[2])}$${m[1]}))`
@@ -324,6 +373,27 @@ function tryDuplicatesAndUnique(text: string): string | null {
   if (m) return `unique(${normalizeDataRef(m[2])}$${m[1]})`
   m = t.match(new RegExp(`^(?:the\\s+)?levels?\\s+of\\s+column\\s+(${IDENT})\\s+(?:of|in)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `levels(factor(${normalizeDataRef(m[2])}$${m[1]}))`
+  return null
+}
+
+// "the mode of education" / "the most common value of education" — R has
+// no built-in statistical mode() (that name is already taken by a
+// variable's storage mode, e.g. "numeric"/"character"), so this is the
+// standard base-R workaround: the name of whichever table() entry sorts
+// highest.
+// Guards against a truncated phrase ("the mode of the") leaking a common
+// English preposition/article through as if it were a real column name —
+// "the"/"of"/etc. are themselves syntactically valid identifiers, the
+// same false-positive risk rDescriptiveStats.ts's bare noun-noun stat
+// pattern hit and fixed with this identical exclusion set.
+const INSPECTION_STOPWORDS = new Set(['of', 'the', 'a', 'an', 'in', 'on', 'for', 'to', 'from', 'by', 'with', 'and', 'or', 'is', 'are'])
+
+function tryMode(text: string): string | null {
+  const t = stripShowLead(text)
+  let m = t.match(new RegExp(`^(?:the\\s+)?mode\\s+of\\s+(${IDENT})$`, 'i'))
+  if (m && !INSPECTION_STOPWORDS.has(m[1].toLowerCase())) return `names(sort(table(df$${m[1]}), decreasing = TRUE))[1]`
+  m = t.match(new RegExp(`^(?:the\\s+)?most\\s+common\\s+value\\s+(?:of|in)\\s+(${IDENT})$`, 'i'))
+  if (m && !INSPECTION_STOPWORDS.has(m[1].toLowerCase())) return `names(sort(table(df$${m[1]}), decreasing = TRUE))[1]`
   return null
 }
 
@@ -356,6 +426,7 @@ export function recognizeDataInspection(rawText: string): string | null {
     trySummary(text) ??
     tryMissingValues(text) ??
     tryDuplicatesAndUnique(text) ??
+    tryMode(text) ??
     tryMisc(text)
   )
 }

@@ -314,6 +314,10 @@ function tryConvertType(text: string): string | null {
   if (m) return buildConvert(colFrom(m, 1), m[4])
   m = text.match(new RegExp(`^parse\\s+${COL_REF}\\s+as\\s+(?:an?\\s+)?(${TYPE_WORDS})$`, 'i'))
   if (m) return buildConvert(colFrom(m, 1), m[4])
+  // "change gender to a factor" — the everyday-English verb, as common a
+  // way to ask for this as "convert"/"turn".
+  m = text.match(new RegExp(`^change\\s+${COL_REF}\\s+to\\s+(?:an?\\s+)?(${TYPE_WORDS})$`, 'i'))
+  if (m) return buildConvert(colFrom(m, 1), m[4])
   return null
 }
 

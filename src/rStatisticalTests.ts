@@ -47,6 +47,21 @@ function tryOneSampleTTest(text: string): string | null {
   return null
 }
 
+// ── Shapiro-Wilk normality test ─────────────────────────────────────────
+// "test whether score is normally distributed" / "a shapiro-wilk test
+// for score" / "check if income is normally distributed" — not part of
+// the original 14-item category, but normality checking is one of the
+// most common things taught right alongside t-tests/ANOVA (both assume
+// it), so a t-test vocabulary this wide having no way to actually test
+// that assumption was the gap.
+function tryShapiroTest(text: string): string | null {
+  let m = text.match(new RegExp(`^(?:test|check)\\s+(?:whether|if)\\s+(${IDENT})\\s+is\\s+normally\\s+distributed$`, 'i'))
+  if (m) return `shapiro.test(df$${m[1]})`
+  m = text.match(new RegExp(`^(?:a\\s+)?shapiro-?wilk\\s+test\\s+(?:for|of|on)\\s+(${IDENT})$`, 'i'))
+  if (m) return `shapiro.test(df$${m[1]})`
+  return null
+}
+
 // ── 67. Independent-samples t-test (Student's — equal variance) ────────
 function tryIndependentTTest(text: string): string | null {
   let m = text.match(new RegExp(`^compare\\s+(?:the\\s+)?mean\\s+(${IDENT})\\s+between\\s+${TREATMENT_CONTROL}\\s+using\\s+an?\\s+independent[\\s-]samples?\\s+t[\\s-]?test$`, 'i'))
@@ -157,6 +172,7 @@ export function recognizeStatisticalTests(rawText: string): string | null {
   const text = rawText.trim()
   return (
     tryOneSampleTTest(text) ??
+    tryShapiroTest(text) ??
     tryIndependentTTest(text) ??
     tryWelchTTest(text) ??
     tryPairedTTest(text) ??
