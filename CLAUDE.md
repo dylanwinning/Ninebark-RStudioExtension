@@ -134,7 +134,14 @@ order:
    on, so those get the right call shape with an obvious placeholder
    identifier and a replace-this comment instead of a guessed column
    name, same posture as rDataImport.ts's no-filename-given case),
-   `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
+   `rRegression` (lm/glm/predict/confint/update/plot.lm, plus
+   `car::vif()`; several phrasings — "the EXISTING regression model",
+   "the logistic regression model" — only make sense as a continuation
+   of an earlier command, which this stateless pipeline has no memory
+   of, so this file adopts a fixed variable name for exactly what each
+   phrasing implies it's building on, `model`/`logit_model`, the `df`
+   convention's equivalent for a model object rather than a data frame
+   — see its own header comment), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
    construction only — "a vector of 1,2,3", "a data frame with columns x
    and y" — NOT wrangling an existing one, that moved to
    rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),

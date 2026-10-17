@@ -66,6 +66,15 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'test whether mean score differs across treatment groups using a one-way ANOVA',
     'compare score across treatment groups using the Kruskal-Wallis test',
   ] },
+  { title: 'Regression & modeling', examples: [
+    'regress score on study_hours using linear regression',
+    'predict income using education, age, and experience in a multiple linear regression',
+    'add age as an additional predictor to the existing regression model',
+    'calculate 95% confidence intervals for all regression coefficients',
+    'create residual-versus-fitted and Q-Q plots for the regression model',
+    'fit a logistic regression predicting outcome from age, income, and treatment',
+    'convert the logistic regression coefficients into odds ratios',
+  ] },
   { title: 'Vectors & data frames', examples: [
     'let x be a vector of 1,2,3,4,5', 'a data frame with columns name and age',
   ] },

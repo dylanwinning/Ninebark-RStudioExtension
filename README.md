@@ -303,6 +303,28 @@ In plain English:
   shape with an obvious placeholder identifier (`group_column`,
   `success_column`) and a comment telling you what to replace, rather
   than guessing a real column name that would likely be wrong.
+- **Regression & modeling**: "regress score on study_hours using linear
+  regression", "predict income using education, age, and experience in a
+  multiple linear regression", "add age as an additional predictor to the
+  existing regression model", "add an interaction between treatment and
+  age to the regression model", "calculate 95% confidence intervals for
+  all regression coefficients", "generate predicted score values for
+  observations in my dataset" (also: "the fitted values of the model" —
+  a distinct, real ask, `fitted()` rather than `predict()`), "create
+  residual-versus-fitted and Q-Q plots for the regression model", "fit a
+  logistic regression predicting outcome from age, income, and
+  treatment", "convert the logistic regression coefficients into odds
+  ratios", "calculate predicted probabilities for each observation using
+  the logistic regression model", "calculate variance inflation factors
+  for the predictors in my regression model" (needs the `car` package).
+  Several of these phrasings ("the EXISTING regression model", "the
+  logistic regression model") only make sense as a continuation of an
+  earlier command, but every recognizer here is stateless — so this
+  vocabulary adopts a fixed, predictable variable name for what each
+  phrasing implies it's building on (`model` for the linear fit,
+  `logit_model` for the logistic one — the same idea as this project's
+  `df` convention, just for a model object), and assumes you've already
+  run the earlier command in THIS session that created it.
 - **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
   data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)
