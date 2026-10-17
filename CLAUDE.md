@@ -125,7 +125,16 @@ order:
    vector or a column and the two can't be told apart by pattern — see
    that file's header comment for the full reasoning, and its own
    regression tests pinning that `rPlotting.ts`'s bare forms stay
-   unchanged), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
+   unchanged), `rStatisticalTests` (t-tests — one-sample/independent-
+   samples/Welch/paired —, Wilcoxon rank-sum, confidence intervals, one-
+   and two-proportion tests, chi-squared, Fisher's exact, one-way ANOVA,
+   Tukey's HSD, Kruskal-Wallis — all base R, no package needed; several
+   phrasings name their grouping variable only abstractly, "two
+   independent groups", with no df-like sensible default to fall back
+   on, so those get the right call shape with an obvious placeholder
+   identifier and a replace-this comment instead of a guessed column
+   name, same posture as rDataImport.ts's no-filename-given case),
+   `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
    construction only — "a vector of 1,2,3", "a data frame with columns x
    and y" — NOT wrangling an existing one, that moved to
    rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),

@@ -280,6 +280,29 @@ In plain English:
   the two phrasings are genuinely indistinguishable by pattern alone, so
   this is a deliberate boundary, not a gap (see rDataVisualization.ts's
   header comment).
+- **Statistical tests & inference**: "test whether the mean score differs
+  from 50 using a one-sample t-test", "compare the mean score between the
+  treatment and control groups using an independent-samples t-test" (also
+  "...using Welch's t-test" — these differ only in `var.equal`, and both
+  are genuinely different statistics, not two names for the same thing),
+  "compare before_score and after_score using a paired t-test", "compare
+  score between two independent groups using a Wilcoxon rank-sum test"
+  (also "Mann-Whitney", the same test), "calculate a 95% confidence
+  interval for the mean income" (also: for a difference in means between
+  two groups), "test whether the proportion of successes differs from
+  0.5", "compare success rates between the treatment and control groups
+  using a two-proportion test", "test whether treatment and outcome are
+  associated using a chi-squared test" (also Fisher's exact test), "test
+  whether mean score differs across treatment groups using a one-way
+  ANOVA", "perform Tukey's HSD post-hoc test to compare the group means
+  following the ANOVA", "compare score across treatment groups using the
+  Kruskal-Wallis test". A few of these phrasings only name their
+  grouping variable abstractly ("two independent groups", "the group
+  means following the ANOVA") with no actual column to default to the
+  way `df` is a sensible default elsewhere — those get the correct call
+  shape with an obvious placeholder identifier (`group_column`,
+  `success_column`) and a comment telling you what to replace, rather
+  than guessing a real column name that would likely be wrong.
 - **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
   data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)

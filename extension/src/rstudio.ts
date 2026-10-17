@@ -57,6 +57,15 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'create a stacked bar chart of treatment by outcome', 'create a Q-Q plot of score',
     'create a correlation matrix heatmap for all numeric variables',
   ] },
+  { title: 'Statistical tests', examples: [
+    'test whether the mean score differs from 50 using a one-sample t-test',
+    'compare the mean score between the treatment and control groups using an independent-samples t-test',
+    'compare before_score and after_score using a paired t-test',
+    'calculate a 95% confidence interval for the mean income',
+    'test whether treatment and outcome are associated using a chi-squared test',
+    'test whether mean score differs across treatment groups using a one-way ANOVA',
+    'compare score across treatment groups using the Kruskal-Wallis test',
+  ] },
   { title: 'Vectors & data frames', examples: [
     'let x be a vector of 1,2,3,4,5', 'a data frame with columns name and age',
   ] },
