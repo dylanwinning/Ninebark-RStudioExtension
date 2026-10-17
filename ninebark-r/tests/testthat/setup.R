@@ -13,3 +13,9 @@
 # just those specific tests, which correctly takes precedence over this
 # suite-wide default for their duration.
 Sys.setenv(NINEBARK_LOG_URL = "")
+
+# Same reasoning, for nb_check_for_update() (R/updateCheck.R): nothing in
+# this suite should make a real network call to GitHub on every test run.
+# test-updateCheck.R's own tests of nb_check_for_update() itself override
+# this locally for just those tests.
+Sys.setenv(NINEBARK_SKIP_UPDATE_CHECK = "true")

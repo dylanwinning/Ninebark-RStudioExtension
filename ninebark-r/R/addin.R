@@ -195,6 +195,19 @@ nb_addin_ui <- function() {
            e.preventDefault();
            document.getElementById('nb_run').click();
          }
+       });
+       // Genuinely disables the input + Run button when an update is
+       // required (not just a log message you could ignore) -- plain
+       // Shiny.addCustomMessageHandler, a core Shiny JS API, not
+       // shinyjs, so this needs no new package dependency.
+       Shiny.addCustomMessageHandler('nb-block-usage', function(blocked) {
+         var input = document.getElementById('nb_input');
+         var run = document.getElementById('nb_run');
+         if (input) {
+           input.disabled = blocked;
+           if (blocked) input.placeholder = 'Update required — see message below';
+         }
+         if (run) run.disabled = blocked;
        });"
     )),
     # left = NULL suppresses gadgetTitleBar()'s DEFAULT left-side button
@@ -270,10 +283,27 @@ ninebark_addin <- function() {
   ui <- nb_addin_ui()
 
   server <- function(input, output, session) {
-    log_entries <- shiny::reactiveVal(character(0))
+    # Seeds the log with an update notice if one applies (see
+    # R/updateCheck.R) -- runs once, synchronously, right when the Addin
+    # opens, bounded to a couple of seconds so a slow/offline network
+    # can't meaningfully delay the panel becoming usable. New entries from
+    # do_run() get PREPENDED below, so this notice stays visible at the
+    # bottom rather than getting buried above newer activity.
+    update_message <- nb_check_for_update()
+    blocked <- !is.null(update_message)
+    log_entries <- shiny::reactiveVal(if (blocked) update_message else character(0))
     last_code <- shiny::reactiveVal("")
 
+    # Genuinely prevents using Ninebark while out of date, not just a
+    # message you could ignore: the input/Run button are disabled
+    # client-side (the JS handler in nb_addin_ui()) the instant the panel
+    # opens, and do_run() below refuses to resolve/dispatch anything as a
+    # second, server-side guard -- belt and suspenders, in case the
+    # client-side disable doesn't apply for some reason (e.g. devtools).
+    if (blocked) session$sendCustomMessage("nb-block-usage", TRUE)
+
     do_run <- function() {
+      if (blocked) return(invisible(NULL))
       result <- nb_run_one(input$nb_input, isTRUE(input$nb_auto))
       if (!is.null(result)) {
         log_entries(c(result$entry, log_entries()))
