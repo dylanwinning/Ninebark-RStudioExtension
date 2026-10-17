@@ -19,9 +19,14 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'cdf of a normal distribution with mean 0 and sd 1 at 1.96',
     'linear regression of 1,2,3 and 2,4,6',
   ] },
+  { title: 'Import & inspect data', examples: [
+    'load data.csv into R', 'import data.xlsx from the second worksheet',
+    'load data.rds into my environment', 'show me the first 10 rows of df',
+    'the column names of df', 'the dimensions of df', 'the data types of every column of df',
+    'count the missing values in each column of df',
+  ] },
   { title: 'Vectors & data frames', examples: [
-    'let x be a vector of 1,2,3,4,5', 'read the csv file data.csv into df',
-    'the first 5 rows of df', 'summary of df', 'filter df where age is greater than 30',
+    'let x be a vector of 1,2,3,4,5', 'filter df where age is greater than 30',
     'select the columns name and age from df', 'sort df by age descending',
   ] },
   { title: 'Plotting', examples: [

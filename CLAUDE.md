@@ -87,11 +87,19 @@ order:
    REST of the text with no knowledge this routing exists.
 3. **R-native recognizers** — one file each, no Desmos/Sheets/MATLAB
    equivalent: `rControlFlow` (for/if-else/while/repeat), `rWorkspace`
-   (rm/ls/setwd/library/save/load/help), `rVectorsAndDataFrames`
-   (read.csv/head/str/filter/select/sort), `rPlotting` (plot/hist/boxplot/
-   ggplot2), `rStrings` (paste/nchar/gsub/strsplit), `rCalculus`
-   (D()/integrate()), `rLinearAlgebra` (det/solve/t/%*%/eigen),
-   `rAssignment` (`let x be …`). Recognizers that need to resolve a
+   (rm/ls/setwd/library/save/load/help), `rDataImport`
+   (read.csv/readxl/readRDS/jsonlite/haven — getting data INTO R, every
+   format with no base-R reader namespaced rather than preceded by
+   `library()`, so it works whether or not that package happens to be
+   loaded), `rDataInspection` (head/tail/colnames/dim/dtypes/missing
+   values — a `DATA_REF` placeholder convention maps "my dataset"/"the
+   data"/"it" to the literal `df` when no real name is given, same
+   convention the README's examples already use), `rVectorsAndDataFrames`
+   (filter/select/sort/rename — wrangling a data frame already in R, not
+   importing or inspecting it), `rPlotting` (plot/hist/boxplot/ggplot2),
+   `rStrings` (paste/nchar/gsub/strsplit), `rCalculus` (D()/integrate()),
+   `rLinearAlgebra` (det/solve/t/%*%/eigen), `rAssignment` (`let x be …`).
+   Recognizers that need to resolve a
    sub-expression take a `ValueResolver` callback (the value tiers only —
    no recursion back into the command grammar); `rControlFlow.ts`'s
    `resolveBodyValue` additionally short-circuits a BARE identifier
@@ -127,6 +135,28 @@ x^2...". Every recognizer's regex has to match the POST-strip form, not the
 sentence a person actually typed — when adding a new recognizer, run it
 through the real pipeline (not a hand-rolled resolveValue stub) before
 trusting a regex that assumes a full leading phrase survives.
+
+**Bare-identifier-fallback gotcha** (a direct consequence of the
+filler-stripping one above, specific enough to burn a second time if not
+called out separately — see `rDataInspection.ts`'s `tryHead` for the fix
+and `tests/rDataInspection.test.ts`'s "through the FULL pipeline" test for
+the regression it pins): because `stripFiller()` eats a leading "show
+me"/"what is" before any recognizer sees the text, a recognizer that adds
+a bare "just a single identifier, nothing else" fallback pattern — to
+catch "show me df" arriving pre-stripped as plain "df" — CANNOT tell that
+apart from a single nonsense word typed alone ("asdkjhaskjdhaskjdh" is
+also just one identifier-shaped token). An earlier version of
+`tryHead`'s bare fallback had no guard against this and silently turned
+gibberish into `head(<gibberish>)` — caught by this project's own
+canonical "gibberish fails loud" tests, including (the one that actually
+caught it) the R package's `R CMD check`, not the TS suite, since the TS
+gibberish test phrase happens to be two words. The fix: gate any such bare
+fallback on `t !== text` (did THIS function's own lead-stripping find and
+remove something, as opposed to the text having arrived pre-stripped) —
+accept that "show me X" specifically becomes an unsupported phrasing
+rather than risk a silent wrong guess. When adding a new "bare X" fallback
+anywhere in this codebase, test it against a bare nonsense word, not just
+the phrasing it's meant to catch.
 
 ## Vendored code — do not edit (mostly)
 

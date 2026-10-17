@@ -1,23 +1,20 @@
-// ── R-native: vectors and data frames ───────────────────────────────────────
-// "a vector of 1,2,3", "read the file data.csv", "write df to output.csv",
-// "the first 5 rows of df", "filter df where age is greater than 30",
-// "select the columns name and age from df", "sort df by age", "summary of
-// df", "the dimensions of df" — the single biggest reason someone opens
-// RStudio that has no equivalent anywhere else in Ninebark: Desmos has no
-// tabular data, a Sheets cell already IS a table, and MATLAB's tables are a
-// smaller part of typical usage than a data.frame is for R. All base R —
-// no tidyverse/dplyr dependency assumed, since this needs to work with
-// nothing but a fresh R session (dplyr's pipe-and-verb style is genuinely
-// nicer for some of this, but requiring library(dplyr) first would make
-// half these commands fail on a session that hasn't loaded it — base R's
-// df[rows, cols] subsetting always works).
+// ── R-native: vectors and data-frame wrangling ──────────────────────────────
+// "a vector of 1,2,3", "filter df where age is greater than 30", "select
+// the columns name and age from df", "sort df by age", "rename column x to
+// y in df" — manipulating a data frame that's already in R. Importing data
+// (rDataImport.ts) and inspecting it (rDataInspection.ts) are split into
+// their own files; this one owns reshaping/subsetting it once it's there.
+// All base R — no tidyverse/dplyr dependency assumed, since this needs to
+// work with nothing but a fresh R session (dplyr's pipe-and-verb style is
+// genuinely nicer for some of this, but requiring library(dplyr) first
+// would make half these commands fail on a session that hasn't loaded it —
+// base R's df[rows, cols] subsetting always works).
 
 function rStr(raw: string): string {
   return `"${raw.trim().replace(/^['"]|['"]$/g, '').replace(/"/g, '\\"')}"`
 }
 
 const IDENT = String.raw`[A-Za-z][\w.]*`
-const FILE = String.raw`[\w./\\ -]+?\.\w+`
 
 // "a vector of 1,2,3,4" / "a vector containing 1,2,3" / "c(1,2,3) as x" —
 // the plain-numeric-list case only; anything with a name or computed values
@@ -30,63 +27,6 @@ function tryBareVector(text: string): string | null {
   const nums = m[1].split(/\s*(?:,|and)\s*/i).map(s => s.trim()).filter(Boolean)
   if (nums.length === 0 || !nums.every(n => /^-?\d+\.?\d*$/.test(n))) return null
   return `c(${nums.join(', ')})`
-}
-
-// "read the csv file data.csv" / "read data.csv into df" / "load the file
-// data.csv as df" / "import data.csv" — read.csv() is base R, no readr
-// dependency assumed.
-function tryReadFile(text: string): string | null {
-  let m = text.match(new RegExp(`^(?:read|import|load)\\s+(?:the\\s+)?(?:csv\\s+)?(?:file\\s+)?(${FILE})\\s+(?:into|as)\\s+(${IDENT})$`, 'i'))
-  if (m) return `${m[2]} <- read.csv(${rStr(m[1])})`
-  m = text.match(new RegExp(`^(?:read|import)\\s+(?:the\\s+)?(?:csv\\s+)?(?:file\\s+)?(${FILE})$`, 'i'))
-  if (m) return `read.csv(${rStr(m[1])})`
-  return null
-}
-
-// "write df to output.csv" / "save df as output.csv" / "export df to output.csv"
-function tryWriteFile(text: string): string | null {
-  const m = text.match(new RegExp(`^(?:write|export|save)\\s+(${IDENT})\\s+(?:to|as|into)\\s+(?:the\\s+(?:file|csv)\\s+)?(${FILE})$`, 'i'))
-  if (!m) return null
-  return `write.csv(${m[1]}, ${rStr(m[2])}, row.names = FALSE)`
-}
-
-// "load the dataset mtcars" / "load the built-in dataset iris" — R's stock
-// teaching datasets, always available via data().
-function tryBuiltinDataset(text: string): string | null {
-  const m = text.match(new RegExp(`^load\\s+(?:the\\s+)?(?:built-?in\\s+)?data(?:set)?\\s+(${IDENT})$`, 'i'))
-  if (!m) return null
-  return `data(${m[1]})`
-}
-
-// Inspection: head/tail/str/summary/dim/nrow/ncol/colnames/names.
-function tryInspect(text: string): string | null {
-  let m = text.match(new RegExp(`^(?:the\\s+)?first\\s+(\\d+)\\s+rows?\\s+of\\s+(${IDENT})$`, 'i'))
-  if (m) return `head(${m[2]}, ${m[1]})`
-  m = text.match(new RegExp(`^(?:the\\s+)?last\\s+(\\d+)\\s+rows?\\s+of\\s+(${IDENT})$`, 'i'))
-  if (m) return `tail(${m[2]}, ${m[1]})`
-  m = text.match(new RegExp(`^(?:show|display|preview)\\s+(?:the\\s+)?(?:first\\s+rows?\\s+of\\s+)?(${IDENT})$`, 'i'))
-  if (m) return `head(${m[1]})`
-  m = text.match(new RegExp(`^(?:the\\s+)?(?:structure|types?\\s+of\\s+(?:the\\s+)?columns?)\\s+of\\s+(${IDENT})$`, 'i'))
-  if (m) return `str(${m[1]})`
-  m = text.match(new RegExp(`^(?:a\\s+)?summary\\s+of\\s+(${IDENT})$`, 'i'))
-  if (m) return `summary(${m[1]})`
-  m = text.match(new RegExp(`^(?:the\\s+)?dimensions?\\s+of\\s+(${IDENT})$`, 'i'))
-  if (m) return `dim(${m[1]})`
-  m = text.match(new RegExp(`^(?:the\\s+)?(?:number\\s+of\\s+rows|row\\s+count)\\s+(?:of|in)\\s+(${IDENT})$`, 'i'))
-  if (m) return `nrow(${m[1]})`
-  m = text.match(new RegExp(`^(?:the\\s+)?(?:number\\s+of\\s+columns|column\\s+count)\\s+(?:of|in)\\s+(${IDENT})$`, 'i'))
-  if (m) return `ncol(${m[1]})`
-  m = text.match(new RegExp(`^(?:the\\s+)?column\\s+names?\\s+of\\s+(${IDENT})$`, 'i'))
-  if (m) return `colnames(${m[1]})`
-  m = text.match(new RegExp(`^(?:the\\s+)?(?:variable|row)\\s+names?\\s+of\\s+(${IDENT})$`, 'i'))
-  if (m) return `rownames(${m[1]})`
-  m = text.match(new RegExp(`^(?:is\\s+there\\s+any\\s+)?missing\\s+(?:data|values?)\\s+in\\s+(${IDENT})\\??$`, 'i'))
-  if (m) return `anyNA(${m[1]})`
-  m = text.match(new RegExp(`^(?:count|how\\s+many)\\s+missing\\s+values?\\s+(?:in|are\\s+in)\\s+(${IDENT})\\??$`, 'i'))
-  if (m) return `sum(is.na(${m[1]}))`
-  m = text.match(new RegExp(`^(?:remove|drop)\\s+(?:rows?\\s+with\\s+)?missing\\s+values?\\s+from\\s+(${IDENT})$`, 'i'))
-  if (m) return `na.omit(${m[1]})`
-  return null
 }
 
 const COMPARATORS: Array<[RegExp, string]> = [
@@ -162,10 +102,6 @@ export function recognizeVectorsAndDataFrames(rawText: string): string | null {
   const text = rawText.trim()
   return (
     tryBareVector(text) ??
-    tryReadFile(text) ??
-    tryWriteFile(text) ??
-    tryBuiltinDataset(text) ??
-    tryInspect(text) ??
     tryFilter(text) ??
     trySelect(text) ??
     trySort(text) ??

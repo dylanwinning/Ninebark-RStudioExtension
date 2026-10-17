@@ -187,13 +187,39 @@ In plain English:
   variables", "install the package ggplot2", "load the package dplyr",
   "set the working directory to ~/proj", "save the workspace to
   session.RData", "get help on mean", "session info".
-- **Vectors & data frames**: "let x be a vector of 1,2,3,4,5", "read the
-  csv file data.csv into df", "write df to output.csv", "the first 5 rows
-  of df", "summary of df", "the dimensions of df", "filter df where age is
-  greater than 30", "select the columns name and age from df", "sort df by
-  age descending", "rename the column x to y in df", "remove the column x
-  from df", "a data frame with columns name and age", "load the dataset
-  mtcars", "is there any missing data in df".
+- **Importing & exporting data**: "load data.csv into R", "import data.xlsx
+  from the second worksheet" (needs the `readxl` package — not installed by
+  default, no base-R equivalent exists for Excel at all, so this one
+  errors with R's own "there is no package called 'readxl'" until you
+  `install.packages("readxl")` once; same for the two below), "load
+  data.rds into my environment", "import the tab-separated file data.txt"
+  (also: semicolon- and pipe-separated, and bare `.tsv` detection — all
+  base R, no package needed), "import data.json" (needs `jsonlite`),
+  "import data.sav"/"data.dta"/"data.sas7bdat" — SPSS, Stata, SAS (needs
+  `haven`), "import https://example.com/data.csv" (a URL works directly,
+  any format), "load the dataset mtcars" (R's built-in teaching data, base
+  R), "write df to output.csv" (base R), "save df as output.xlsx" (needs
+  the `writexl` package), "export df to data.rds" (base R). A generic
+  "import this tab-separated file" with no filename given still produces
+  the right call shape, with a placeholder to fill in.
+- **Inspecting data**: "show me the first 10 rows of df" (also: last 10,
+  "the tail of df", "preview df"), "the column names of df" (also:
+  "headers", "fields", "variable names"), "the dimensions of df" (also:
+  "the shape of df", row/column counts separately), "the data types of
+  every column of df" (also: "the structure of df", base R; "glimpse df",
+  needs the `dplyr` package);
+  "count the missing values in each column of df" (also: whole-data-frame
+  totals, "which columns have missing values", "the percentage of missing
+  values"), "a summary of df", "duplicated rows in df", "the unique values
+  in column age of df", "is df a data frame". A generic reference — "my
+  dataset" / "the data" / "it" — with no real variable named normalizes to
+  `df`, the same convention every example elsewhere here already uses; R
+  itself reports a clear error if that's not actually your data frame's name.
+- **Vectors & data-frame wrangling**: "let x be a vector of 1,2,3,4,5",
+  "filter df where age is greater than 30", "select the columns name and
+  age from df", "sort df by age descending", "rename the column x to y in
+  df", "remove the column x from df", "a data frame with columns name and
+  age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)
   from 0 to 2*pi", "histogram of x", "boxplot of x by group", "a bar chart
   of counts", "a line chart of y vs x", "add a title 'Results'", "label the
