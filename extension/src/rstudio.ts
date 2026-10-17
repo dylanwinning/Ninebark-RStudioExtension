@@ -49,6 +49,14 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'the mean, median, and standard deviation of score for each treatment group',
     'the correlation between study_hours and score',
   ] },
+  { title: 'Visualize data', examples: [
+    'create a histogram of income', 'create a boxplot of score for each treatment group',
+    'create a scatterplot of study_hours against score',
+    'add a linear regression line to the scatterplot of study_hours against score',
+    'create a bar chart showing the number of observations in each major',
+    'create a stacked bar chart of treatment by outcome', 'create a Q-Q plot of score',
+    'create a correlation matrix heatmap for all numeric variables',
+  ] },
   { title: 'Vectors & data frames', examples: [
     'let x be a vector of 1,2,3,4,5', 'a data frame with columns name and age',
   ] },

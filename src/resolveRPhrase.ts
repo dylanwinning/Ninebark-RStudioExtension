@@ -20,10 +20,10 @@
 //   1. This repo's R-native recognizers — control flow, assignment,
 //      workspace/session/packages, data import, data inspection, data
 //      cleaning & filtering, creating & transforming variables,
-//      descriptive statistics, vectors & data frames, plotting, string
-//      ops, calculus, linear algebra. Vocabulary with no
-//      Desmos/Sheets/MATLAB equivalent, each producing a complete R
-//      statement.
+//      descriptive statistics, data visualization, vectors & data
+//      frames, plotting, string ops, calculus, linear algebra.
+//      Vocabulary with no Desmos/Sheets/MATLAB equivalent, each producing
+//      a complete R statement.
 //   2. Vendored tier-1  recognizeDesmosPhrase  → formalStringToR
 //   3. Vendored tier-2  nlToFormal             → formalStringToR
 //
@@ -39,6 +39,7 @@ import { recognizeWorkspace } from './rWorkspace'
 import { recognizeDataImport } from './rDataImport'
 import { recognizeDataInspection } from './rDataInspection'
 import { recognizeDescriptiveStats } from './rDescriptiveStats'
+import { recognizeDataVisualization } from './rDataVisualization'
 import { recognizeDataCleaning } from './rDataCleaning'
 import { recognizeDataTransform } from './rDataTransform'
 import { recognizeVectorsAndDataFrames } from './rVectorsAndDataFrames'
@@ -180,6 +181,7 @@ function resolveBody(text: string): string {
       recognizeDataCleaning(text) ??
       recognizeDataTransform(text) ??
       recognizeDescriptiveStats(text) ??
+      recognizeDataVisualization(text) ??
       recognizeVectorsAndDataFrames(text) ??
       recognizePlotting(text) ??
       recognizeStrings(text) ??

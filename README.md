@@ -262,6 +262,24 @@ In plain English:
   `cor()`'s equivalent, `use = "complete.obs"`) — unlike a literal list, a
   real column is one `rDataCleaning.ts` category away from having missing
   values, and base R silently returns `NA` without it.
+- **Visualizing a data-frame column**: the same plotting vocabulary below,
+  pointed at a column instead of a standalone vector — "create a
+  histogram of income", "create a density plot of income", "create a
+  boxplot of score" (also "... for each treatment group"), "create a
+  scatterplot of study_hours against score" (and "add a linear
+  regression line to" that same scatterplot), "create a bar chart showing
+  the number of observations in each major", "create a stacked bar chart
+  of treatment by outcome", "create a line chart of sales over time,
+  using date on the x-axis", "create a Q-Q plot of score", "create a
+  correlation matrix heatmap for all numeric variables", "plot the mean
+  score for each treatment group with 95% confidence intervals" (needs
+  the `gplots` package), "save the current plot as a high-resolution PNG
+  file". Every one of these requires an explicit lead verb ("create
+  a"/"make a"/"add a ... to the ..."/"save the ...") — the bare form
+  below ("histogram of x") still means a standalone vector, unchanged;
+  the two phrasings are genuinely indistinguishable by pattern alone, so
+  this is a deliberate boundary, not a gap (see rDataVisualization.ts's
+  header comment).
 - **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
   data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)

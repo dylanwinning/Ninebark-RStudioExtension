@@ -116,7 +116,16 @@ order:
    column can have missing values where a literal list can't; runs FIRST
    in the native chain so a bare identifier like "income" is claimed here
    before a literal list ever reaches tier-1/tier-2, which still handle
-   that case exactly as before), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
+   that case exactly as before), `rDataVisualization` (the same plotting
+   vocabulary `rPlotting.ts` already has for a standalone vector —
+   "histogram of x" — pointed at a data-frame column instead: "create a
+   histogram of income"; deliberately requires an explicit lead verb
+   ["create a"/"make a"/"add a ... to the ..."] since the bare "histogram
+   of X" shape is syntactically IDENTICAL whether X is a standalone
+   vector or a column and the two can't be told apart by pattern — see
+   that file's header comment for the full reasoning, and its own
+   regression tests pinning that `rPlotting.ts`'s bare forms stay
+   unchanged), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
    construction only — "a vector of 1,2,3", "a data frame with columns x
    and y" — NOT wrangling an existing one, that moved to
    rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),
@@ -221,6 +230,32 @@ suite proves the recognizer's regex, never the resulting R's correctness —
 spot-check genuinely novel R *shapes* (not just novel phrasings of already-
 proven shapes) in a real `Rscript -e`, especially anything using `[`,
 `$`, or NSE-flavored semantics, before trusting the generated code.
+
+**Syntactically-identical-but-different-intent gotcha** (not a bug to fix,
+a deliberate boundary to recognize when it comes up again): the data
+visualization category's "create a histogram of income" and the much
+older `rPlotting.ts`'s "histogram of x" are the EXACT same grammar shape
+("[lead]histogram of IDENT") but mean different things — "x" is an
+already-built standalone vector (`let x be a vector of 1,2,3,4,5`), while
+"income" is a data-frame column (`df$income`) — and nothing about the text
+itself says which one a given IDENT is. Unlike every earlier gotcha in this
+file, this ISN'T fixable by reordering or adding a guard — the ambiguity is
+real, not a bug. The resolution: `rDataVisualization.ts` only recognizes
+these phrasings when an explicit lead verb is present ("create a"/"make
+a"/"plot a"/"add a ... to the ...") that `rPlotting.ts`'s bare patterns
+never had to begin with, so the two vocabularies partition the input space
+by a syntactic signal (the lead verb) rather than guessing at semantic
+intent. Confirmed empirically before writing any new recognizer, not
+assumed: every one of this category's literal example phrasings already
+failed loud against the existing pipeline (none were silently
+misinterpreted), and the bare "histogram of x"-shaped tests are pinned
+unchanged in `tests/rDataVisualization.test.ts`'s own regression block.
+When two categories' vocabularies could describe the same underlying
+English shape with different meanings, look for a real distinguishing
+signal in the phrasing (a lead verb, a required qualifier) rather than
+picking one interpretation and hoping — and when there IS a genuine
+coverage gap for the "loser" phrasing, document it as a known, deliberate
+one rather than silently dropping it.
 
 ## Vendored code — do not edit (mostly)
 
