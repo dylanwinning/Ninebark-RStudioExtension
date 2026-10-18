@@ -127,14 +127,23 @@ function tryDate(text: string): string | null {
   // "the" is stripped by the shared stripFiller() before this ever sees
   // the text, so "the current date" arrives as bare "current date" —
   // the pattern has to tolerate the lead being gone, not just present.
-  if (/^(?:(?:the\s+)?current\s+date|today'?s?\s+date|what\s+is\s+today'?s?\s+date)\??$/i.test(text)) return 'Sys.Date()'
-  if (/^(?:(?:the\s+)?current\s+time|the\s+time\s+right\s+now|what\s+time\s+is\s+it)\??$/i.test(text)) return 'Sys.time()'
+  if (/^(?:(?:the\s+)?current\s+date|today'?s?\s*(?:date)?|what\s+is\s+today'?s?\s+date)\??$/i.test(text)) return 'Sys.Date()'
+  if (/^(?:(?:the\s+)?current\s+time|the\s+time\s+right\s+now|what\s+time\s+is\s+it|now)\??$/i.test(text)) return 'Sys.time()'
   return null
 }
 
 function tryHelp(text: string): string | null {
-  // "get help on mean" / "help with mean" / "what does mean do" / "show the documentation for mean"
-  const m = text.match(/^(?:get\s+help\s+(?:on|with|for)|help\s+(?:on|with|for)|show\s+(?:the\s+)?(?:documentation|docs|help)\s+for|what\s+does)\s+([A-Za-z][\w.]*)(?:\s+do)?\??$/i)
+  // "get help on mean" / "help with mean" / "what does mean do" / "show
+  // the documentation for mean" / bare "help mean" (no preposition at
+  // all — mirrors the real R console idiom `help(mean)` closely enough
+  // that it's a natural, common way to type this). The bare form is
+  // checked here, in rWorkspace.ts, specifically so it's claimed BEFORE
+  // rDescriptiveStats.ts's own bare noun-noun stat pattern ever sees it —
+  // "help mean" is structurally identical to "age mean"/"mean score," and
+  // without this running first it was wrongly captured as "the mean of a
+  // column literally named help," producing `mean(df$help, na.rm =
+  // TRUE)` instead of `help(mean)` — confirmed empirically, not assumed.
+  const m = text.match(/^(?:get\s+help\s+(?:on|with|for)|help\s+(?:on|with|for)|help|show\s+(?:the\s+)?(?:documentation|docs|help)\s+for|what\s+does)\s+([A-Za-z][\w.]*)(?:\s+do)?\??$/i)
   if (m) return `help(${m[1]})`
   return null
 }

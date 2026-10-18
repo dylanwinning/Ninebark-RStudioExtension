@@ -196,6 +196,9 @@ function tryRowOrColCount(text: string): string | null {
   // tryDimensions' own bare "the number of rows and columns" above.
   if (/^(?:the\s+)?(?:total\s+)?(?:number|count)\s+of\s+(?:rows?|observations?|records?)$/i.test(t)) return 'nrow(df)'
   if (/^how\s+many\s+(?:rows?|observations?|records?)\s+(?:are|is)\s+there\??$/i.test(t)) return 'nrow(df)'
+  // Terser still — "count rows" with no article/preposition at all.
+  if (/^count\s+(?:rows?|observations?|records?)$/i.test(t)) return 'nrow(df)'
+  if (/^count\s+(?:columns?|variables?|fields?)$/i.test(t)) return 'ncol(df)'
   let m = t.match(new RegExp(`^(?:the\\s+)?(?:total\\s+)?(?:number|count)\\s+of\\s+(?:rows?|observations?|records?)\\s+(?:of|in|for)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `nrow(${normalizeDataRef(m[1])})`
   m = t.match(new RegExp(`^(?:the\\s+)?row\\s+count\\s+(?:of|in|for)\\s+(${DATA_REF})$`, 'i'))
@@ -381,8 +384,27 @@ function tryDuplicatesAndUnique(text: string): string | null {
   if (m) return `length(unique(${normalizeDataRef(m[2])}$${m[1]}))`
   m = t.match(new RegExp(`^(?:the\\s+)?unique\\s+values?\\s+in\\s+column\\s+(${IDENT})\\s+(?:of|in)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `unique(${normalizeDataRef(m[2])}$${m[1]})`
+  // Shorter forms, no "in column"/"of df" at all — "unique values of
+  // gender" / "the number of unique values of gender" / bare "unique
+  // gender" — the full, original "unique values IN COLUMN X OF df"
+  // phrasing turned out to be the ONLY one supported, far more verbose
+  // than anyone actually types; defaults to df like every other unnamed
+  // form in this file.
+  // Guards against a truncated phrase ("unique of", "the levels of")
+  // leaking a common English preposition through as if it were a real
+  // column name — the same false-positive risk rDescriptiveStats.ts's
+  // bare noun-noun stat pattern hit and fixed with this identical
+  // exclusion set (defined once, below, and used by tryMode too).
+  m = t.match(new RegExp(`^(?:the\\s+)?(?:number|count)\\s+of\\s+unique\\s+values?\\s+(?:of|in|for)\\s+(${IDENT})$`, 'i'))
+  if (m && !INSPECTION_STOPWORDS.has(m[1].toLowerCase())) return `length(unique(df$${m[1]}))`
+  m = t.match(new RegExp(`^(?:the\\s+)?unique\\s+values?\\s+(?:of|in|for)\\s+(${IDENT})$`, 'i'))
+  if (m && !INSPECTION_STOPWORDS.has(m[1].toLowerCase())) return `unique(df$${m[1]})`
+  m = t.match(new RegExp(`^unique\\s+(${IDENT})$`, 'i'))
+  if (m && !INSPECTION_STOPWORDS.has(m[1].toLowerCase())) return `unique(df$${m[1]})`
   m = t.match(new RegExp(`^(?:the\\s+)?levels?\\s+of\\s+column\\s+(${IDENT})\\s+(?:of|in)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `levels(factor(${normalizeDataRef(m[2])}$${m[1]}))`
+  m = t.match(new RegExp(`^(?:the\\s+)?levels?\\s+of\\s+(${IDENT})$`, 'i'))
+  if (m && !INSPECTION_STOPWORDS.has(m[1].toLowerCase())) return `levels(factor(df$${m[1]}))`
   return null
 }
 

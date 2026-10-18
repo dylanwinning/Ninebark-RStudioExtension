@@ -273,6 +273,29 @@ X") against the FULL pipeline, not just the new file's own recognizer in
 isolation — a collision shows up only in `resolveToRStatement()`, never in
 a bare `recognizeDataCleaning()` call.
 
+**A bare two-word pattern can swallow a command from a totally unrelated
+file, not just an overlapping one** (found during a "simple stuff" stress
+test, a different flavor from the cross-file collision above — that one
+was two files competing over the same CONCEPT, "remove X"; this one is
+two files that aren't related at all): `rDescriptiveStats.ts`'s bare
+noun-noun stat pattern ("mean score"/"income mean") accepts ANY
+identifier next to a stat word, with no restriction on what that
+identifier is — so "help mean" (meaning: call `help()` on the function
+`mean`) matched it too, as if "help" were a column name, producing
+`mean(df$help, na.rm = TRUE)` instead of `help(mean)`. The root cause:
+`rWorkspace.ts`'s own `tryHelp()` only recognized "help ON/WITH/FOR X" —
+never a bare "help X" with no preposition — so by the time the bare stat
+pattern (checked later in the chain) saw "help mean," `rWorkspace.ts` had
+already declined it. The fix: taught `tryHelp()` the bare form too, which
+(since `rWorkspace.ts` runs before `rDescriptiveStats.ts`) claims it
+first. The lesson: a permissive "ANY_IDENTIFIER near TRIGGER_WORD" pattern
+isn't just a risk for OTHER phrasings of the SAME idea — it's a risk for
+every other recognizer's own trigger words that don't yet have a bare
+form, which could be anywhere in the codebase, not just the obviously
+related files. When adding a bare fallback this permissive, test it
+against short, common VERBS from unrelated vocabulary (help, plot, load,
+save, clear, drop, ...), not just plausible column names.
+
 **The filename-swallowing gotcha recurs per format, not just once** (found
 during a later "come up with a bunch of example inputs" stress-test pass,
 not while building the category it lives in): `rDataImport.ts`'s original

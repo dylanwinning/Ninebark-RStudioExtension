@@ -162,10 +162,20 @@ function tryCurve(text: string): string | null {
   return `curve(${m[1].trim()}, from = ${m[2].trim()}, to = ${m[3].trim()})`
 }
 
+// Excludes common English function words from the bare (no "of") forms
+// below — "histogram the"/"boxplot of" truncated would otherwise leak
+// one of these through as a plot variable, since they're themselves
+// syntactically valid identifiers. Same reasoning as
+// rDescriptiveStats.ts's bare noun-noun stat pattern.
+const PLOT_STOPWORDS = new Set(['of', 'the', 'a', 'an', 'in', 'on', 'for', 'to', 'from', 'by', 'with', 'and', 'or', 'is', 'are'])
+
 function tryHist(text: string): string | null {
-  const m = text.match(new RegExp(`^(?:a\\s+)?histogram\\s+of\\s+(${IDENT})$`, 'i'))
-  if (!m) return null
-  return `hist(${m[1]})`
+  let m = text.match(new RegExp(`^(?:a\\s+)?histogram\\s+of\\s+(${IDENT})$`, 'i'))
+  if (m) return `hist(${m[1]})`
+  // "histogram age" — no "of" at all.
+  m = text.match(new RegExp(`^histogram\\s+(${IDENT})$`, 'i'))
+  if (m && !PLOT_STOPWORDS.has(m[1].toLowerCase())) return `hist(${m[1]})`
+  return null
 }
 
 function tryBoxplot(text: string): string | null {
@@ -173,6 +183,9 @@ function tryBoxplot(text: string): string | null {
   if (m) return `boxplot(${m[1]})`
   m = text.match(new RegExp(`^(?:a\\s+)?box\\s*plot\\s+of\\s+(${IDENT})\\s+by\\s+(${IDENT})$`, 'i'))
   if (m) return `boxplot(${m[1]} ~ ${m[2]})`
+  // "boxplot score" — no "of" at all.
+  m = text.match(new RegExp(`^box\\s*plot\\s+(${IDENT})$`, 'i'))
+  if (m && !PLOT_STOPWORDS.has(m[1].toLowerCase())) return `boxplot(${m[1]})`
   return null
 }
 

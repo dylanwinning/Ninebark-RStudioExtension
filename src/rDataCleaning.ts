@@ -26,6 +26,14 @@ function rStr(raw: string): string {
 
 const IDENT = String.raw`[A-Za-z][\w.]*`
 const DATA_REF = String.raw`(?:${IDENT}|my\s+dataset|the\s+dataset|this\s+dataset|my\s+data|the\s+data|this\s+data|it)`
+// Common English function words excluded from matching as a captured
+// column name in any bare "TRIGGER (${IDENT})$" pattern below — a
+// truncated phrase ("drop the", "drop of") would otherwise leak one of
+// these through as if it were a real column, since they're themselves
+// syntactically valid identifiers. Same exclusion set, same reasoning,
+// as rDescriptiveStats.ts's bare noun-noun stat pattern and
+// rDataInspection.ts's INSPECTION_STOPWORDS.
+const STOPWORDS = new Set(['of', 'the', 'a', 'an', 'in', 'on', 'for', 'to', 'from', 'by', 'with', 'and', 'or', 'is', 'are'])
 // A separator between list items that tolerates an Oxford comma: "age,
 // income, and education" has BOTH a comma AND "and" before the last item,
 // not just one or the other — "," alone and " and " alone must also still
@@ -209,6 +217,24 @@ function tryRemoveColumn(text: string): string | null {
   if (m) return `${m[2]}$${m[1]} <- NULL`
   m = text.match(new RegExp(`^(?:remove|drop|delete)\\s+(?:the\\s+)?column\\s+(${IDENT})$`, 'i'))
   if (m) return `df$${m[1]} <- NULL`
+  // "remove the income column" / "remove income column" — the reverse
+  // word order, "column" AFTER the name instead of before it (same gap
+  // as tryRenameColumn's own "the X column to Y" fix).
+  m = text.match(new RegExp(`^(?:remove|drop|delete)\\s+(?:the\\s+)?(${IDENT})\\s+column$`, 'i'))
+  if (m && !STOPWORDS.has(m[1].toLowerCase())) return `df$${m[1]} <- NULL`
+  // Bare "drop income" — no "column"/"the" at all, as terse a way to ask
+  // for this as "drop duplicate rows"/"drop rows with missing X"
+  // elsewhere in this file already are. Checked LAST and only reached
+  // after every more specific "drop ..." pattern above and in
+  // tryRemoveDuplicates/tryRemoveMissingInColumn/tryRemoveAnyMissing
+  // (checked earlier in recognizeDataCleaning's own chain) has already
+  // declined, so "drop duplicates"/"drop incomplete rows" are claimed
+  // by those first and never misread as "remove a column literally
+  // named duplicates." Guarded against the same truncated-phrase
+  // stopword leak as rDescriptiveStats.ts's bare noun-noun stat pattern
+  // ("drop the"/"drop of" would otherwise resolve to df$the/df$of <- NULL).
+  m = text.match(new RegExp(`^drop\\s+(${IDENT})$`, 'i'))
+  if (m && !STOPWORDS.has(m[1].toLowerCase())) return `df$${m[1]} <- NULL`
   return null
 }
 
