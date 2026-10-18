@@ -33,7 +33,7 @@ import { disambiguate } from './disambiguation/policy'
 import { emit } from './emit/formalString'
 import type { ParseNode } from './grammar/forest'
 import type { NlDiagnostic } from '../types/diagnostic'
-import { FN_LABELS, EXAMPLE_BANK } from '../types/diagnostic'
+import { FN_LABELS } from '../types/diagnostic'
 
 export type { NlResult, NlSettings }
 
@@ -89,6 +89,19 @@ function findTrailingOperator(rawTokens: NlToken[]): string | null {
   if (relevant.length === 0) return null
   const last = relevant[relevant.length - 1]
   if (INFIX_CLASSES.has(last.cls)) return last.raw
+  return null
+}
+
+// "times 5" / "plus 3" — an infix operator with nothing before it to operate
+// on. Without this, such input fell through every specific check (it's not
+// a trailing operator, not a stray operand — TIMES isn't a value token —
+// not an unrecognized token either) all the way to the generic "I didn't
+// understand that phrasing" message, which never named the actual problem.
+function findLeadingOperator(rawTokens: NlToken[]): string | null {
+  const relevant = rawTokens.filter(t => t.cls !== 'FRAMING' && t.cls !== 'UNKNOWN')
+  if (relevant.length === 0) return null
+  const first = relevant[0]
+  if (INFIX_CLASSES.has(first.cls)) return first.raw
   return null
 }
 
@@ -190,6 +203,12 @@ function computeNlDiagnostic(
     return { category: 'missing-operand', offendingToken: trailingOp, expected: ['operand'] }
   }
 
+  // 7b. Leading infix operator → missing operand on the other side
+  const leadingOp = findLeadingOperator(rawTokens)
+  if (leadingOp) {
+    return { category: 'missing-operand', offendingToken: leadingOp, expected: ['left-operand'] }
+  }
+
   // 8. Stray operand — two adjacent value tokens with no operator
   const stray = findStrayOperand(rawTokens)
   if (stray) {
@@ -204,22 +223,26 @@ function computeNlDiagnostic(
 // Exported for use in App.tsx when surfacing NL failures.
 export function buildNlErrorMessage(code: string, diagnostic?: NlDiagnostic): string {
   if (!diagnostic || diagnostic.category === 'general') {
-    return NL_MESSAGES[code as NlErrorCodeValue] ?? "I didn't understand that. Try: 'square root of 16' or 'two plus two'."
+    return NL_MESSAGES[code as NlErrorCodeValue] ?? "I didn't recognize that."
   }
   switch (diagnostic.category) {
     case 'empty-incomplete':
-      return "Nothing to calculate. Try: '2 + 2', 'square root of 16', or 'sin 90 degrees'."
+      return "Nothing to calculate."
 
     case 'unrecognized-token':
-      return `I didn't recognize "${diagnostic.offendingToken}". That's not a function or operator I know. ` +
-        'Functions include: square root, sine, log, absolute value. Operators: plus, minus, times, divided by.'
+      // Deliberately no "functions include: …" list here — any fixed list
+      // is necessarily incomplete (this engine knows far more functions
+      // than fit in one sentence), so naming a few was actively misleading
+      // about what IS supported without naming what's actually wrong.
+      return `I don't recognize "${diagnostic.offendingToken}" as a number, function, or operator.`
 
     case 'missing-operand':
-      return `"${diagnostic.offendingToken}" needs a value after it — e.g. '5 ${diagnostic.offendingToken} 3'.`
+      return diagnostic.expected?.includes('left-operand')
+        ? `"${diagnostic.offendingToken}" needs a value before it.`
+        : `"${diagnostic.offendingToken}" needs a value after it.`
 
     case 'stray-operand':
-      return `"${diagnostic.offendingToken}" has no operator connecting it to the previous value. ` +
-        `Add an operator — e.g. '… plus ${diagnostic.offendingToken}' or '… times ${diagnostic.offendingToken}'.`
+      return `"${diagnostic.offendingToken}" has no operator connecting it to the previous value.`
 
     case 'unbalanced-grouping': {
       const bal = diagnostic.parenBalance!
@@ -227,29 +250,44 @@ export function buildNlErrorMessage(code: string, diagnostic?: NlDiagnostic): st
       const missing = diff > 0
         ? `${diff} closing parenthes${diff === 1 ? 'is' : 'es'}`
         : `${Math.abs(diff)} opening parenthes${Math.abs(diff) === 1 ? 'is' : 'es'}`
-      return `Unbalanced parentheses — ${bal.open} open, ${bal.close} close. Add ${missing}.`
+      return `Unbalanced parentheses — ${bal.open} open, ${bal.close} close. Missing ${missing}.`
     }
 
     case 'ambiguity': {
       const cr = diagnostic.competingReadings!
       const interps = cr.interpretations.join(' or ')
-      return `"${cr.token}" is ambiguous here — it could mean ${interps}. ` +
-        "Use a more specific form: e.g. 'plus' for addition, or 'the list …, …' for a list."
+      return `"${cr.token}" is ambiguous — it could mean ${interps}.`
     }
 
-    case 'missing-parameter':
-      return NL_MESSAGES[NlErrorCode.TEST_NEEDS_PARAM]!
+    case 'missing-parameter': {
+      // Built FROM the diagnostic (which test, which param) instead of
+      // returning one static message — that static version always led
+      // with "a t-test needs a mean" even when the input said "z-test"
+      // and was only missing sigma, which was both inaccurate (named the
+      // wrong test) and irrelevant (the mean was never the problem there).
+      const isZTest = (diagnostic.expected ?? []).includes('sigma')
+      const missingSigma = diagnostic.offendingToken?.startsWith('sigma')
+      if (missingSigma) return "A z-test also needs a known σ."
+      return isZTest
+        ? "A z-test needs a hypothesized mean (μ0)."
+        : "A t-test needs a hypothesized mean (μ0)."
+    }
 
     case 'out-of-coverage': {
       const feats = diagnostic.recognized?.features ?? []
+      // 'difference'/'quotient' have a more specific, already-written
+      // message (NL_MESSAGES.ARITY) for exactly this situation — using it
+      // here instead of the generic fallback below actually says what's
+      // wrong (wrong argument count) rather than just that something is.
+      if (feats.includes('difference') || feats.includes('quotient')) {
+        return NL_MESSAGES[NlErrorCode.ARITY]!
+      }
       const featList = feats.join(' and ')
-      const examples = feats.flatMap(f => EXAMPLE_BANK[f] ?? []).slice(0, 2)
-      const exStr = examples.length > 0 ? ` Examples: ${examples.map(e => `'${e}'`).join('; ')}.` : ''
-      return `I recognized ${featList}, but not how they fit together.${exStr}`
+      return `I recognized ${featList}, but not how they fit together.`
     }
 
     default:
-      return NL_MESSAGES[code as NlErrorCodeValue] ?? "I didn't understand that phrasing."
+      return NL_MESSAGES[code as NlErrorCodeValue] ?? "I didn't recognize that."
   }
 }
 

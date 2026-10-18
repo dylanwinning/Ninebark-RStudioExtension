@@ -36,7 +36,7 @@ import { UnsupportedFormalError } from './formalStringTokenizer'
 
 function numbersIn(text: string): string[] {
   const nums = text.match(/-?\d+(?:\.\d+)?/g)
-  if (!nums || nums.length === 0) throw new UnsupportedFormalError(`I couldn't find any numbers in "${text.trim()}" — try listing them like "1, 2, 3".`)
+  if (!nums || nums.length === 0) throw new UnsupportedFormalError(`I couldn't find any numbers in "${text.trim()}".`)
   return nums
 }
 
@@ -140,34 +140,34 @@ function distributionFormal(text: string): string | null {
   }
   if (/\bt[\s-]distribution\b|\bstudent'?s?\s+t[\s-]?distribution\b/i.test(text)) {
     const df = extractNumber(text, ['degrees of freedom', 'df'])
-    if (df === null) throw new UnsupportedFormalError('t-distribution needs degrees of freedom, e.g. "t distribution with 10 degrees of freedom"')
+    if (df === null) throw new UnsupportedFormalError('t-distribution needs degrees of freedom.')
     return `tdist(${df})`
   }
   if (/\bchi[\s-]?squared?\s+distribution\b/i.test(text)) {
     const df = extractNumber(text, ['degrees of freedom', 'df'])
-    if (df === null) throw new UnsupportedFormalError('chi-square distribution needs degrees of freedom, e.g. "chi-square distribution with 10 degrees of freedom"')
+    if (df === null) throw new UnsupportedFormalError('chi-square distribution needs degrees of freedom.')
     return `chisqdist(${df})`
   }
   if (/\buniform\s+distribution\b/i.test(text)) {
     const min = extractNumber(text, ['minimum', 'min', 'from'])
     const max = extractNumber(text, ['maximum', 'max', 'to'])
-    if (min === null || max === null) throw new UnsupportedFormalError('uniform distribution needs a minimum and maximum, e.g. "uniform distribution from 0 to 1"')
+    if (min === null || max === null) throw new UnsupportedFormalError('uniform distribution needs a minimum and maximum.')
     return `uniformdist(${min}, ${max})`
   }
   if (/\bbinomial\s+distribution\b/i.test(text)) {
     const n = extractNumber(text, ['trials', 'n'])
     const p = extractProbability(text)
-    if (n === null || p === null) throw new UnsupportedFormalError('binomial distribution needs a number of trials and a probability, e.g. "binomial distribution with 10 trials and probability 0.3" or "...and a 30% success rate"')
+    if (n === null || p === null) throw new UnsupportedFormalError('binomial distribution needs a number of trials and a probability.')
     return `binomialdist(${n}, ${p})`
   }
   if (/\bpoisson\s+distribution\b/i.test(text)) {
     const mean = extractNumber(text, ['mean', 'rate', 'lambda'])
-    if (mean === null) throw new UnsupportedFormalError('Poisson distribution needs a mean, e.g. "Poisson distribution with mean 5"')
+    if (mean === null) throw new UnsupportedFormalError('Poisson distribution needs a mean.')
     return `poissondist(${mean})`
   }
   if (/\bgeometric\s+distribution\b/i.test(text)) {
     const p = extractProbability(text)
-    if (p === null) throw new UnsupportedFormalError('geometric distribution needs a success probability, e.g. "geometric distribution with probability 0.7" or "...with a 70% success rate"')
+    if (p === null) throw new UnsupportedFormalError('geometric distribution needs a success probability.')
     return `geodist(${p})`
   }
   return null
@@ -239,7 +239,7 @@ function numberTheoryFormal(text: string): string | null {
   if ((m = text.match(/^\s*is\s+(-?\d+)\s+even\s*$/i))) return `mod(${m[1]},2)=0`
   if ((m = text.match(/^\s*is\s+(-?\d+)\s+odd\s*$/i))) return `mod(${m[1]},2)=1`
   if (/^\s*is\s+-?\d+\s+prime\s*$/i.test(text))
-    throw new UnsupportedFormalError('Checking primality isn\'t supported yet — try factoring or dividing manually instead.')
+    throw new UnsupportedFormalError('Checking primality isn\'t supported yet.')
 
   if ((m = text.match(/^\s*(.+?)\s+choose\s+(.+)$/i))) return `nCr(${m[1].trim()}, ${m[2].trim()})`
   if ((m = text.match(/permutations?\s+of\s+(.+?)\s+(?:things?\s+)?taken\s+(.+?)\s+at\s+a\s+time/i))) return `nPr(${m[1].trim()}, ${m[2].trim()})`
@@ -589,14 +589,21 @@ function geometryFormal(text: string): string | null {
   // Vector ops — a plain "(a,b)" point doubles as a 2D vector from the
   // origin. Tried before the generic polygon/coordinate patterns below since
   // "vector" isn't one of their trigger words, so there's no collision.
-  if ((m = text.match(/\bdot\s+product\s+of\s+(.+?)\s+and\s+(.+)$/i))) {
-    const p1 = [...m[1].matchAll(POINT_RE)][0], p2 = [...m[2].matchAll(POINT_RE)][0]
-    if (!p1 || !p2) throw new UnsupportedFormalError('dot product needs two vectors as points, e.g. "dot product of (1,2) and (3,4)"')
+  // Trigger matches on the phrase ALONE (not "... of X and Y", which would
+  // silently fail to match "dot product of (1,2)" missing its second
+  // vector — no "and" to match — and fall through all the way to tier-2's
+  // generic "I didn't recognize 'dot'" instead of this function's own
+  // specific, accurate message). Same fix applied to lineThroughFormal()
+  // below and already how polygon/area's triggers work.
+  if (/\bdot\s+product\s+of\b/i.test(text)) {
+    const pts = [...text.matchAll(POINT_RE)]
+    if (pts.length < 2) throw new UnsupportedFormalError('dot product needs two vectors as points.')
+    const [p1, p2] = pts
     return `(${p1[1]})*(${p2[1]})+(${p1[2]})*(${p2[2]})`
   }
-  if ((m = text.match(/\bunit\s+vector\s+of\s+(.+)$/i))) {
-    const p = [...m[1].matchAll(POINT_RE)][0]
-    if (!p) throw new UnsupportedFormalError('unit vector needs a vector as a point, e.g. "unit vector of (3,4)"')
+  if (/\bunit\s+vector\s+of\b/i.test(text)) {
+    const p = [...text.matchAll(POINT_RE)][0]
+    if (!p) throw new UnsupportedFormalError('unit vector needs a vector as a point.')
     const [x, y] = [p[1], p[2]]
     const mag = `sqrt((${x})^2+(${y})^2)`
     return `((${x})/(${mag}),(${y})/(${mag}))`
@@ -609,12 +616,12 @@ function geometryFormal(text: string): string | null {
   if (/\b(?:area|perimeter)\s+of\s+(?:a\s+|the\s+)?(?:triangle|polygon|quadrilateral|rectangle)\b/i.test(text)) {
     const wantsArea = /\barea\b/i.test(text)
     const pts = verticesIn(text)
-    if (pts.length < 3) throw new UnsupportedFormalError(`${wantsArea ? 'area' : 'perimeter'} needs at least 3 vertices, e.g. "area of a triangle with vertices (0,0), (4,0), (0,3)"`)
+    if (pts.length < 3) throw new UnsupportedFormalError(`${wantsArea ? 'area' : 'perimeter'} needs at least 3 vertices.`)
     return wantsArea ? polygonAreaExpr(pts) : polygonPerimeterExpr(pts)
   }
   if (/\bpolygon\b/i.test(text)) {
     const pairs = [...text.matchAll(POINT_RE)]
-    if (pairs.length < 3) throw new UnsupportedFormalError('polygon needs at least 3 points, e.g. "polygon (0,0), (3,4), (4,2)"')
+    if (pairs.length < 3) throw new UnsupportedFormalError('polygon needs at least 3 points.')
     return `polygon(${pairs.map(p => `(${p[1]}, ${p[2]})`).join(', ')})`
   }
   return null
@@ -625,11 +632,14 @@ function geometryFormal(text: string): string | null {
 // it stays an exact fraction instead of a rounded decimal. A vertical line
 // (equal x-coordinates) becomes "x = h" instead of dividing by zero.
 function lineThroughFormal(text: string): string | null {
-  const m = text.match(/\bline\s+(?:through|between|connecting)\s+(.+?)\s+and\s+(.+)$/i)
-  if (!m) return null
-  const p1 = [...m[1].matchAll(POINT_RE)][0]
-  const p2 = [...m[2].matchAll(POINT_RE)][0]
-  if (!p1 || !p2) throw new UnsupportedFormalError('line through needs two points, e.g. "line through (1,2) and (3,4)"')
+  // Matches on "line through/between/connecting" ALONE, not "... X and Y"
+  // — see dotProduct/unitVector's own comment above for why requiring
+  // "and" in the trigger itself silently drops a missing-second-point
+  // case all the way through to tier-2's unhelpful generic message
+  // instead of the specific one right below.
+  if (!/\bline\s+(?:through|between|connecting)\b/i.test(text)) return null
+  const [p1, p2] = [...text.matchAll(POINT_RE)]
+  if (!p1 || !p2) throw new UnsupportedFormalError('line through needs two points.')
   const [x1, y1, x2, y2] = [p1[1], p1[2], p2[1], p2[2]]
   if (x1 === x2) return `equation(x=${x1})`
   return `equation(y-(${y1})=(${y2}-${y1})/(${x2}-${x1})*(x-(${x1})))`
@@ -643,7 +653,7 @@ function lineSlopeFormal(text: string): string | null {
   if ((m = text.match(/\bline\s+with\s+(?:a\s+)?slope\s+(?:of\s+)?(-?[\d.]+)\s+(?:and\s+)?(?:through|passing\s+through)\s+(.+)$/i))) {
     const [, slope, ptText] = m
     const p = [...ptText.matchAll(POINT_RE)][0]
-    if (!p) throw new UnsupportedFormalError('line with a slope needs a point, e.g. "line with slope 2 through (1,3)"')
+    if (!p) throw new UnsupportedFormalError('line with a slope needs a point.')
     return `equation(y-(${p[2]})=(${slope})*(x-(${p[1]})))`
   }
   if ((m = text.match(/\bline\s+with\s+(?:a\s+)?slope\s+(?:of\s+)?(-?[\d.]+)\s+and\s+(?:a\s+)?y[\s-]?intercept\s+(?:of\s+)?(-?[\d.]+)/i)))

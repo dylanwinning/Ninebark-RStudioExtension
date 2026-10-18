@@ -221,3 +221,30 @@ describe('fail-loud boundary', () => {
     expect(() => resolveToRStatement('solve x^2 = 4')).toThrow(/no symbolic algebra solver/)
   })
 })
+
+describe('silent wrong output from dropped-but-unreported words (regression)', () => {
+  // nlToFormal() is deliberately lenient about words it can't place
+  // (DECISION-37: "drop-and-surface, not reject") — it strips them from the
+  // math-only stream and still returns ok:true on whatever's left, recording
+  // what it dropped in `unrecognized`. Neither call site in
+  // resolveRPhrase.ts (resolveToRStatement, and the resolveValue used by
+  // the assignment recognizer) read that field, so e.g. "let x be blah
+  // thirds" would silently assign x <- 1/3 with zero indication "blah" was
+  // ignored. Same bug/fix as Ninebark-DesmosExtension's resolvePhrase.ts.
+  it('"blah thirds" fails instead of silently resolving to a statement', () => {
+    expect(() => resolveToRStatement('blah thirds')).toThrow(RNlFailure)
+    expect(() => resolveToRStatement('blah thirds')).toThrow(/"blah"/)
+  })
+
+  it('"two and a halfth" fails instead of silently resolving to a wrong statement', () => {
+    expect(() => resolveToRStatement('two and a halfth')).toThrow(/"halfth"/)
+  })
+
+  it('the same bug via the resolveValue path (assignment RHS)', () => {
+    expect(() => resolveToRStatement('let x be blah thirds')).toThrow(/"blah"/)
+  })
+
+  it('legitimate filler words still drop silently', () => {
+    expect(resolveToRStatement('please calculate 2 plus 2')).toBe('2+2')
+  })
+})

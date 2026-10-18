@@ -16,13 +16,13 @@ export const NlErrorCode = {
 export type NlErrorCodeValue = typeof NlErrorCode[keyof typeof NlErrorCode]
 
 export const NL_MESSAGES: Record<NlErrorCodeValue, string> = {
-  [NlErrorCode.COVERAGE]:   "I didn't understand that phrasing. Try: 'square root of 16' or 'two plus two'",
-  [NlErrorCode.AMBIGUOUS]:  "That phrasing is ambiguous — please be more specific",
-  [NlErrorCode.BAD_FRAC]:   "I couldn't read that fraction. Try: 'half', 'two thirds', 'a quarter'",
-  [NlErrorCode.EMPTY]:      "Nothing to calculate after removing the question framing",
-  [NlErrorCode.BAD_NUMBER]: "I couldn't read that number. Try digits or simple word-forms",
-  [NlErrorCode.ARITY]:      "Wrong number of arguments — 'difference of' and 'quotient of' take exactly two values",
-  [NlErrorCode.ANGLE_UNIT]: "Inline angle units (degrees/radians) aren't supported yet — set the angle mode in settings instead",
-  [NlErrorCode.REGRESSION_NEEDS_PAIRS]: "Regression needs paired (x, y) data — use coordinate pairs like (1,2) (2,4), or provide an x-list and a y-list separated by 'and'.",
-  [NlErrorCode.TEST_NEEDS_PARAM]: "A t-test needs a hypothesized mean (μ0) — e.g. 't-test for 4, 5, 6, 7 with mean 5'. A z-test also requires a known σ.",
+  [NlErrorCode.COVERAGE]:   "I didn't recognize that phrasing.",
+  [NlErrorCode.AMBIGUOUS]:  "That phrasing is ambiguous — please be more specific.",
+  [NlErrorCode.BAD_FRAC]:   "I couldn't read that as a fraction.",
+  [NlErrorCode.EMPTY]:      "Nothing to calculate.",
+  [NlErrorCode.BAD_NUMBER]: "I couldn't read that as a number.",
+  [NlErrorCode.ARITY]:      "Wrong number of arguments — 'difference of' and 'quotient of' take exactly two values.",
+  [NlErrorCode.ANGLE_UNIT]: "Inline angle units (degrees/radians) aren't supported yet.",
+  [NlErrorCode.REGRESSION_NEEDS_PAIRS]: "Regression needs paired (x, y) data, not a single flat list.",
+  [NlErrorCode.TEST_NEEDS_PARAM]: "A t-test needs a hypothesized mean (μ0); a z-test also needs a known σ.",
 }

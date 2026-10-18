@@ -162,7 +162,7 @@ class RFormalParser {
   private peek(offset = 0): Token | undefined { return this.tokens[this.pos + offset] }
   private next(): Token {
     const t = this.tokens[this.pos]
-    if (!t) throw new UnsupportedRFormalError('That looks incomplete — check for a missing number or closing parenthesis.')
+    if (!t) throw new UnsupportedRFormalError('Input not recognized.')
     this.pos++
     return t
   }
@@ -172,14 +172,14 @@ class RFormalParser {
   private expectSym(value: string): void {
     const t = this.next()
     if (t.type !== 'SYM' || t.value !== value) {
-      throw new UnsupportedRFormalError(`Expected a '${value}' around here, but found '${t.value}' instead.`)
+      throw new UnsupportedRFormalError(`Expected '${value}' but found '${t.value}'.`)
     }
   }
 
   parseTopLevel(): string {
     const result = this.parseCompareChain()
     if (this.pos !== this.tokens.length) {
-      throw new UnsupportedRFormalError(`There's extra text after a complete expression, starting at '${this.peek()?.value}'.`)
+      throw new UnsupportedRFormalError(`Unexpected '${this.peek()?.value}' after a complete expression.`)
     }
     return result.text
   }
@@ -352,7 +352,7 @@ class RFormalParser {
 
   private parsePrimary(): Val {
     const t = this.peek()
-    if (!t) throw new UnsupportedRFormalError('That looks incomplete — check for a missing number or closing parenthesis.')
+    if (!t) throw new UnsupportedRFormalError('Input not recognized.')
 
     if (t.type === 'NUM') {
       this.next()
@@ -639,7 +639,7 @@ function freeVars(formal: string): string[] {
 function convertPercentOf(formal: string): string {
   const inner = formal.slice('percentof('.length, -1)
   const [a, b] = splitTopLevel(inner)
-  if (a === undefined || b === undefined) throw new UnsupportedRFormalError('Something went wrong reading that percentage.')
+  if (a === undefined || b === undefined) throw new UnsupportedRFormalError('Input not recognized.')
   const wrapp = (s: string) => /^[A-Za-z0-9_.]+$/.test(s) ? s : `(${s})`
   return `${wrapp(convertExpr(a.trim()))}/100*${wrapp(convertExpr(b.trim()))}`
 }
@@ -721,7 +721,7 @@ const KNOWN_FORMAL_NAMES = new Set<string>([
 function guardAgainstJunkWords(formal: string): void {
   for (const run of formal.match(/[a-zA-Z]{3,}/g) ?? []) {
     if (!KNOWN_FORMAL_NAMES.has(run) && !KNOWN_FORMAL_NAMES.has(run.toLowerCase())) {
-      throw new UnsupportedRFormalError(`I don't recognize "${run}" as part of an R command — try rephrasing.`)
+      throw new UnsupportedRFormalError(`I don't recognize "${run}" as part of an R command.`)
     }
   }
 }

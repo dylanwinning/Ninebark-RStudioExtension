@@ -53,8 +53,17 @@ export const FN_LABELS: Record<string, string> = {
   min:         'minimum',
   max:         'maximum',
   product:     'product',
+  prod:        'product',
   variance:    'variance',
-  stddev:      'standard deviation',
+  // Lexicon stores this as camelCase 'stdDev' (see lexicon/classes.ts) — the
+  // lowercase 'stddev' key here never matched it, so "standard deviation of"
+  // with no argument fell back to the raw identifier "stdDev" in the message
+  // AND silently dropped its EXAMPLE_BANK entry (keyed off this label), since
+  // that lookup never ran either.
+  stdDev:      'standard deviation',
+  popStdDev:   'population standard deviation',
+  popVariance: 'population variance',
+  oneVarStats: 'one-variable statistics',
   nCr:         'combinations (nCr)',
   nPr:         'permutations (nPr)',
   gcd:         'greatest common divisor',
@@ -62,6 +71,28 @@ export const FN_LABELS: Record<string, string> = {
   solve:       'equation solver',
   linReg:      'linear regression',
   quadReg:     'quadratic regression',
+  asinh:       'inverse hyperbolic sine',
+  acosh:       'inverse hyperbolic cosine',
+  atanh:       'inverse hyperbolic tangent',
+  coth:        'hyperbolic cotangent',
+  sech:        'hyperbolic secant',
+  csch:        'hyperbolic cosecant',
+  acoth:       'inverse hyperbolic cotangent',
+  asech:       'inverse hyperbolic secant',
+  acsch:       'inverse hyperbolic cosecant',
+  asec:        'inverse secant',
+  acsc:        'inverse cosecant',
+  acot:        'inverse cotangent',
+  erf:         'error function',
+  det:         'determinant',
+  transpose:   'transpose',
+  inverse:     'matrix inverse',
+  IQR:         'interquartile range',
+  Q1:          'first quartile',
+  Q3:          'third quartile',
+  mode:        'mode',
+  range:       'range',
+  count:       'count',
 }
 
 // Feature-keyed example bank: human-readable feature name → 1-2 canonical usage examples.
@@ -89,4 +120,9 @@ export const EXAMPLE_BANK: Record<string, string[]> = {
   'standard deviation':      ['standard deviation of 3 5 7'],
   'combinations (nCr)':      ['5 nCr 2', 'combinations of 5 choose 2'],
   'permutations (nPr)':      ['5 nPr 2'],
+  'population standard deviation': ['population standard deviation of 3 5 7'],
+  'population variance':    ['population variance of 3 5 7'],
+  'one-variable statistics': ['one-variable statistics of 3 5 7'],
+  'determinant':             ['determinant of (1,2),(3,4)'],
+  'interquartile range':     ['IQR of 3 5 7 9'],
 }

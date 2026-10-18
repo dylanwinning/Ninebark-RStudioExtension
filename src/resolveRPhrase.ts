@@ -65,6 +65,22 @@ import { recognizeLinearAlgebra } from './rLinearAlgebra'
 
 export class RNlFailure extends Error {}
 
+// Mirrors Ninebark-DesmosExtension's resolvePhrase.ts fix: nlToFormal is
+// deliberately lenient about words it can't place (DECISION-37:
+// "drop-and-surface, not reject") — it strips them from the math-only
+// stream and still returns ok:true on whatever's left, recording exactly
+// what it dropped in `unrecognized`. Trusting ok:true without checking that
+// field means e.g. "let x be blah thirds" would silently assign x <- 1/3,
+// dropping "blah" with zero indication anything was ignored.
+function unrecognizedWordsMessage(words: string[]): string {
+  const quoted = words.map(w => `"${w}"`)
+  const list = quoted.length <= 2
+    ? quoted.join(' and ')
+    : `${quoted.slice(0, -1).join(', ')}, and ${quoted[quoted.length - 1]}`
+  const noun = quoted.length === 1 ? 'a number, function, or operator' : 'numbers, functions, or operators'
+  return `I don't recognize ${list} as ${noun}.`
+}
+
 export type RTarget = 'console' | 'source'
 export interface RCommand { target: RTarget; code: string }
 
@@ -235,7 +251,10 @@ const resolveValue: ValueResolver = (phrase: string): string => {
   if (looksLikeRawExpr(t)) return t
 
   const nl = nlToFormal(t)
-  if (nl.ok) return toStatement(nl.formal)
+  if (nl.ok) {
+    if (nl.unrecognized.length > 0) throw new RNlFailure(unrecognizedWordsMessage(nl.unrecognized))
+    return toStatement(nl.formal)
+  }
 
   throw new RNlFailure(buildNlErrorMessage(nl.code, nl.diagnostic))
 }
@@ -282,7 +301,10 @@ function resolveBody(text: string): string {
   if (looksLikeRawExpr(text)) return text
 
   const nl = nlToFormal(text)
-  if (nl.ok) return toStatement(nl.formal)
+  if (nl.ok) {
+    if (nl.unrecognized.length > 0) throw new RNlFailure(unrecognizedWordsMessage(nl.unrecognized))
+    return toStatement(nl.formal)
+  }
 
   throw new RNlFailure(buildNlErrorMessage(nl.code, nl.diagnostic))
 }
