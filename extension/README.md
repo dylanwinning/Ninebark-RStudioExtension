@@ -23,9 +23,12 @@ RStudio host itself, so your logged-in session is the credential.
    root — this folder specifically, the one with `manifest.json` in it).
 5. Go to [posit.cloud](https://posit.cloud) and sign in (or open your own
    RStudio Server / Posit Workbench host — see **Self-hosted RStudio
-   Server / Posit Workbench**, below). Once RStudio has loaded, a small
-   green circular button appears in the bottom-right corner — click it to
-   open the input bar.
+   Server / Posit Workbench**, below, since that needs one extra click the
+   first time). Once RStudio has loaded, a small green circular button
+   appears in the bottom-right corner of the PAGE — click it to open the
+   input bar. (This is unrelated to the extension's own toolbar icon next
+   to Chrome's address bar, which only matters for self-hosted hosts —
+   see below.)
 
 After editing source, re-run `npm run build` (or `npm run watch:rstudio`
 from the repo root to rebuild on every save) and click the refresh icon on
@@ -36,10 +39,27 @@ the extension's card at `chrome://extensions` to pick up the new bundle.
 Posit Cloud is a fixed domain (`posit.cloud`), so it works out of the box.
 RStudio Server and Posit Workbench are **self-hosted at whatever hostname
 your organization or institution chose** — there's no single domain
-`manifest.json` can list in advance, the same reason
-Ninebark-SheetsExtension's OAuth client ID and
-Ninebark-MATLABExtension's manifest each have their own one-time,
-hand-edited step. To use this extension on your own host:
+`manifest.json` can list in advance. Two ways to handle that, pick
+whichever fits:
+
+**Click to activate, no editing (works for a Chrome Web Store install
+too, not just "Load unpacked").** The extension has `activeTab` +
+`scripting` permission and a background service worker
+([`background.js`](background.js)) for exactly this: open your host in a
+tab, click the Ninebark icon in Chrome's own toolbar (next to the address
+bar — not the green in-page button from step 5 above), and the same
+`dist/rstudio.js` Posit Cloud gets automatically is injected into that one
+tab. No standing host permission is requested at install time — this is
+the standard Chrome extension pattern for "works on any domain" without
+asking for "read and change all your data on all websites" up front. It's
+per-tab: a fresh tab (or a reload) on the same host needs one more click.
+
+**Or, hand-edit the manifest for a permanently automatic Load-unpacked
+install on your one known host** (the same one-time, hand-edited step
+Ninebark-SheetsExtension's OAuth client ID and Ninebark-MATLABExtension's
+manifest each have) — only available if you're loading this extension
+unpacked from source, since a Chrome Web Store install's manifest can't be
+edited:
 
 1. Open [`manifest.json`](manifest.json).
 2. Add your host to **both** the `content_scripts[0].matches` array and
@@ -53,7 +73,8 @@ hand-edited step. To use this extension on your own host:
    ```
    (and the matching entry under `host_permissions`.)
 3. Go to `chrome://extensions` and click the refresh icon on Ninebark's card
-   to reload it with the new manifest.
+   to reload it with the new manifest. No more clicking needed afterward —
+   same zero-setup behavior Posit Cloud gets.
 
 ## How it works
 
@@ -76,10 +97,15 @@ hand-edited step. To use this extension on your own host:
   inserts it via the Source editor's real Ace API (the Source target). See
   [../EXECUTION.md](../EXECUTION.md) for the full write-path design and
   what's confirmed vs. still pending a live check.
-- **No background service worker.** Ninebark-SheetsExtension needs one to
-  broker a Google OAuth token; this extension calls a same-origin endpoint
-  with the session cookie (plus a CSRF token read from a page cookie), so
-  there's nothing to broker.
+- **`background.js`** is intentionally tiny — not an OAuth broker like
+  Ninebark-SheetsExtension's (this extension calls a same-origin endpoint
+  with the session cookie, plus a CSRF token read from a page cookie, so
+  there's no token to broker). Its only job is `chrome.action.onClicked`:
+  on a self-hosted Server/Workbench tab with no standing host permission,
+  inject `dist/rstudio.js` into the clicked tab via `chrome.scripting`
+  (`activeTab`). Posit Cloud/rstudio.cloud never need this — they're
+  injected declaratively by `manifest.json`'s own `content_scripts` entry,
+  same as before.
 
 ## The trade-offs, honestly
 

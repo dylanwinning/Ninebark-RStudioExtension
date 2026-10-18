@@ -164,4 +164,12 @@ function mountWidget(): void {
   })
 }
 
-if (window.top === window) mountWidget()
+// Idempotency guard: on Posit Cloud/rstudio.cloud this script is already
+// injected declaratively (manifest.json's content_scripts), so a user
+// clicking the toolbar icon there too (background.js's activeTab path)
+// must not mount a second widget.
+const globalMarker = window as unknown as { __ninebarkRStudioMounted?: boolean }
+if (window.top === window && !globalMarker.__ninebarkRStudioMounted) {
+  globalMarker.__ninebarkRStudioMounted = true
+  mountWidget()
+}

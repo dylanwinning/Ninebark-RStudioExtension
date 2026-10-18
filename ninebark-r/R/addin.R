@@ -205,7 +205,7 @@ nb_addin_ui <- function() {
          var run = document.getElementById('nb_run');
          if (input) {
            input.disabled = blocked;
-           if (blocked) input.placeholder = 'Update required — see message below';
+           if (blocked) input.placeholder = 'Update required - see message below';
          }
          if (run) run.disabled = blocked;
        });"

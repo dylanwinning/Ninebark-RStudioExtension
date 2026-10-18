@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Ninebark for RStudio",
   "version": "1.0.0",
-  "description": "Type R commands in plain English right on RStudio Server, Posit Workbench, or Posit Cloud — no setup, works on the real page.",
+  "description": "Type R commands in plain English right on RStudio Server, Posit Workbench, or Posit Cloud — automatic on Posit Cloud, one click on a self-hosted Server/Workbench tab.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -21,5 +21,17 @@
   "host_permissions": [
     "https://posit.cloud/*",
     "https://rstudio.cloud/*"
-  ]
+  ],
+  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Ninebark for RStudio — click to activate on this RStudio Server / Posit Workbench tab",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  }
 }

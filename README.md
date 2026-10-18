@@ -67,7 +67,14 @@ want depends on which RStudio you use:
   [`ninebark-r/README.md`](ninebark-r/README.md).
 - **[`extension/`](extension/) — a Chrome extension.** Targets **Posit
   Cloud, RStudio Server, and Posit Workbench only** — the web editions,
-  opened in a real browser tab. **Cannot reach RStudio Desktop**: since
+  opened in a real browser tab. Mounts automatically on Posit Cloud/
+  rstudio.cloud (listed by name in `manifest.json`); on a self-hosted
+  Server/Workbench instance — which runs on whatever domain the customer
+  put it on, not a fixed one `manifest.json` could list — click the
+  toolbar icon once to activate it on that tab (`activeTab`, no standing
+  host permission, the standard pattern for "works on any domain" without
+  asking for blanket "read and change all your data on all websites" at
+  install time). **Cannot reach RStudio Desktop**: since
   2022.12 Desktop runs the identical GWT web client the server editions
   serve, just inside an Electron window instead of a browser tab — a
   Chrome content script attaches to Chrome tabs, and an Electron window
@@ -164,8 +171,11 @@ Then load `extension/` as an unpacked extension in Chrome — see
 
 ## What it supports
 
-No setup — just be on a Posit Cloud / RStudio Server / Posit Workbench tab.
-In plain English:
+No setup on Posit Cloud / rstudio.cloud — the widget mounts automatically.
+On a self-hosted RStudio Server / Posit Workbench tab (an arbitrary
+customer domain the extension can't list in advance), click the toolbar
+icon once to activate it there — see "Two ways to use this" above. Either
+way, in plain English:
 
 - **The same statistics/math vocabulary as every other Ninebark interface**,
   reduced to an R expression: "mean of 1,2,3,4,5" → `mean(c(1, 2, 3, 4, 5))`,
