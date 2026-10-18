@@ -225,6 +225,10 @@ function trySortDataset(text: string): string | null {
   if (m) return buildSort(normalizeDataRef(m[1]), m[2], /^highest/i.test(m[3]))
   m = text.match(new RegExp(`^(?:sort|order)\\s+(${DATA_REF})\\s+by\\s+(${IDENT})(?:\\s+(ascending|descending|asc|desc))?$`, 'i'))
   if (m) return buildSort(normalizeDataRef(m[1]), m[2], /^des/i.test(m[3] ?? ''))
+  // No data frame named at all — "sort by score ascending" — defaults
+  // to df, same convention as every other unnamed form elsewhere.
+  m = text.match(new RegExp(`^(?:sort|order)\\s+by\\s+(${IDENT})(?:\\s+(ascending|descending|asc|desc))?$`, 'i'))
+  if (m) return buildSort('df', m[1], /^des/i.test(m[2] ?? ''))
   return null
 }
 
@@ -239,6 +243,10 @@ function tryRenameColumn(text: string): string | null {
   let m = text.match(new RegExp(`^rename\\s+(?:the\\s+)?column\\s+(${IDENT})\\s+to\\s+(${IDENT})\\s+in\\s+(${IDENT})$`, 'i'))
   if (m) return buildRename(m[3], m[1], m[2])
   m = text.match(new RegExp(`^rename\\s+(?:the\\s+)?column\\s+(${IDENT})\\s+to\\s+(${IDENT})$`, 'i'))
+  if (m) return buildRename('df', m[1], m[2])
+  // "rename the X column to Y" — the reverse word order, "column" AFTER
+  // the name instead of before it.
+  m = text.match(new RegExp(`^rename\\s+the\\s+(${IDENT})\\s+column\\s+to\\s+(${IDENT})$`, 'i'))
   if (m) return buildRename('df', m[1], m[2])
   m = text.match(new RegExp(`^rename\\s+(${IDENT})\\s+to\\s+(${IDENT})$`, 'i'))
   if (m) return buildRename('df', m[1], m[2])

@@ -180,7 +180,7 @@ const GROUPED_STAT_FN: Record<string, string> = {
 }
 
 function tryGroupedStats(text: string): string | null {
-  const m = text.match(new RegExp(`^${STAT_LEAD}(.+?)\\s+of\\s+(${IDENT})\\s+for\\s+each\\s+(${IDENT})\\s+group$`, 'i'))
+  const m = text.match(new RegExp(`^${STAT_LEAD}(.+?)\\s+of\\s+(${IDENT})\\s+for\\s+each\\s+(${IDENT})(?:\\s+group)?$`, 'i'))
   if (!m) return null
   const words = m[1].split(new RegExp(LIST_SEP, 'i')).map(s => s.trim().toLowerCase())
   const fns = words.map(w => GROUPED_STAT_FN[w])

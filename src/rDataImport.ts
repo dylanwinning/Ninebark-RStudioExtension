@@ -93,7 +93,7 @@ function tryReadCsv(text: string): string | null {
   // it would otherwise swallow "my data from data.csv" WHOLE as if the
   // entire phrase were the filename, since that too ends in ".csv" — the
   // same class of bug as the Excel sheet-before-filename cases above.
-  let m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+)?data\\s+from\\s+(?:the\\s+(?:csv\\s+)?(?:file\\s+)?)?(${CSV_FILE})$`, 'i'))
+  let m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+|the\\s+)?data(?:set)?\\s+from\\s+(?:the\\s+(?:csv\\s+)?(?:file\\s+)?)?(${CSV_FILE})$`, 'i'))
   if (m) return wrap(`read.csv(${rStr(m[1])})`, varName)
   m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:csv\\s+)?(?:file\\s+)?(?:called\\s+)?(${CSV_FILE})$`, 'i'))
   if (m) return wrap(`read.csv(${rStr(m[1])})`, varName)
@@ -142,6 +142,11 @@ const ORDINAL_SHEET_RE = new RegExp(`^from\\s+(?:the\\s+)?(${ORDINAL_WORDS})\\s+
 // combine in more than one order.
 function tryReadExcel(text: string): string | null {
   const { rest: afterName, varName } = stripTail(text)
+
+  // "my/the data(set) from FILE.xlsx" (no sheet named) checked FIRST —
+  // same permissive-character-class bug as tryReadCsv's own fix.
+  const dm = afterName.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+|the\\s+)?data(?:set)?\\s+from\\s+(?:the\\s+(?:file\\s+)?)?(${XLSX_FILE})$`, 'i'))
+  if (dm) return wrap(`readxl::read_excel(${rStr(dm[1])})`, varName)
 
   // "the Nth worksheet OF data.xlsx" / "the Sales sheet FROM data.xlsx" —
   // sheet descriptor BEFORE the filename, connected by either "of" or
@@ -205,7 +210,12 @@ function tryReadExcel(text: string): string | null {
 // value you choose what to do with, same as any other import here.
 function tryReadRds(text: string): string | null {
   const { rest, varName } = stripTail(text)
-  const m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:file\\s+)?(${RDS_FILE})$`, 'i'))
+  // "my/the data(set) from FILE.rds" checked FIRST — same permissive-
+  // character-class bug as tryReadCsv's own fix, since RDS_FILE also
+  // allows spaces in a filename.
+  let m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+|the\\s+)?data(?:set)?\\s+from\\s+(?:the\\s+(?:file\\s+)?)?(${RDS_FILE})$`, 'i'))
+  if (m) return wrap(`readRDS(${rStr(m[1])})`, varName)
+  m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:file\\s+)?(${RDS_FILE})$`, 'i'))
   if (!m) return null
   return wrap(`readRDS(${rStr(m[1])})`, varName)
 }
@@ -239,6 +249,16 @@ function tryReadDelimitedNamed(text: string): string | null {
     ?? rest.match(new RegExp(`^${IMPORT_VERB}\\s+(${FILE})\\s+as\\s+(?:a\\s+)?tab[\\s-]?(?:separated|delimited)(?:\\s+file)?$`, 'i'))
   if (m) return wrap(`read.delim(${rStr(m[1])})`, varName)
 
+  // "my/the data(set) from FILE.tsv" checked FIRST — same permissive-
+  // character-class bug as tryReadCsv's own "my data from FILE" fix
+  // above: TSV_FILE allows spaces (so a real filename like "my data.tsv"
+  // still works), so without this, "import the dataset from data.tsv"
+  // was swallowed WHOLE as if "dataset from data.tsv" were the literal
+  // filename, since that string too ends in ".tsv" — confirmed
+  // empirically, not just reasoned about.
+  m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+|the\\s+)?data(?:set)?\\s+from\\s+(?:the\\s+(?:file\\s+)?)?(${TSV_FILE})$`, 'i'))
+  if (m) return wrap(`read.delim(${rStr(m[1])})`, varName)
+
   m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:file\\s+)?(${TSV_FILE})$`, 'i'))
   if (m) return wrap(`read.delim(${rStr(m[1])})`, varName)
 
@@ -257,7 +277,11 @@ function tryReadDelimitedNamed(text: string): string | null {
 // one standard JSON reader for R (no base-R equivalent).
 function tryReadJson(text: string): string | null {
   const { rest, varName } = stripTail(text)
-  const m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:json\\s+)?(?:file\\s+)?(${JSON_FILE})$`, 'i'))
+  // "my/the data(set) from FILE.json" checked FIRST — same permissive-
+  // character-class bug as tryReadCsv's own fix.
+  let m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+|the\\s+)?data(?:set)?\\s+from\\s+(?:the\\s+(?:file\\s+)?)?(${JSON_FILE})$`, 'i'))
+  if (m) return wrap(`jsonlite::fromJSON(${rStr(m[1])})`, varName)
+  m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:json\\s+)?(?:file\\s+)?(${JSON_FILE})$`, 'i'))
   if (!m) return null
   return wrap(`jsonlite::fromJSON(${rStr(m[1])})`, varName)
 }
@@ -268,7 +292,15 @@ function tryReadJson(text: string): string | null {
 // any of the three).
 function tryReadStatPackage(text: string): string | null {
   const { rest, varName } = stripTail(text)
-  let m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:spss\\s+)?(?:file\\s+)?(${SAV_FILE})$`, 'i'))
+  // "my/the data(set) from FILE.ext" checked FIRST for each format —
+  // same permissive-character-class bug as tryReadCsv's own fix.
+  let m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+|the\\s+)?data(?:set)?\\s+from\\s+(?:the\\s+(?:file\\s+)?)?(${SAV_FILE})$`, 'i'))
+  if (m) return wrap(`haven::read_sav(${rStr(m[1])})`, varName)
+  m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+|the\\s+)?data(?:set)?\\s+from\\s+(?:the\\s+(?:file\\s+)?)?(${DTA_FILE})$`, 'i'))
+  if (m) return wrap(`haven::read_dta(${rStr(m[1])})`, varName)
+  m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:my\\s+|the\\s+)?data(?:set)?\\s+from\\s+(?:the\\s+(?:file\\s+)?)?(${SAS_FILE})$`, 'i'))
+  if (m) return wrap(`haven::read_sas(${rStr(m[1])})`, varName)
+  m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:spss\\s+)?(?:file\\s+)?(${SAV_FILE})$`, 'i'))
   if (m) return wrap(`haven::read_sav(${rStr(m[1])})`, varName)
   m = rest.match(new RegExp(`^${IMPORT_VERB}\\s+(?:the\\s+)?(?:stata\\s+)?(?:file\\s+)?(${DTA_FILE})$`, 'i'))
   if (m) return wrap(`haven::read_dta(${rStr(m[1])})`, varName)

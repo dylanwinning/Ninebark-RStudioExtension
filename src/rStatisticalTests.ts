@@ -61,6 +61,11 @@ function tryOneSampleTTest(text: string): string | null {
   if (m) return `t.test(df$${m[1]}, mu = ${m[3]}, alternative = "${directionWord(m[2])}")`
   m = text.match(new RegExp(`^is\\s+the\\s+mean\\s+(${IDENT})\\s+${GT_LT}\\s+(-?[\\d.]+)\\??$`, 'i'))
   if (m) return `t.test(df$${m[1]}, mu = ${m[3]}, alternative = "${directionWord(m[2])}")`
+  // "test whether the mean age IS 30" — the same two-sided null
+  // hypothesis as "differs from 30" (is H0: mu = 30 true?), just phrased
+  // as a direct equality rather than its negation.
+  m = text.match(new RegExp(`^test\\s+(?:whether|if)\\s+(?:the\\s+)?mean\\s+(${IDENT})\\s+is\\s+(-?[\\d.]+)$`, 'i'))
+  if (m) return `t.test(df$${m[1]}, mu = ${m[2]})`
   return null
 }
 

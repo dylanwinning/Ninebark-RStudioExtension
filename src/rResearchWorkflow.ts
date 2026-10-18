@@ -40,6 +40,8 @@ function tryRandomSampleRows(text: string): string | null {
   if (m) return `df[sample(nrow(df), ${m[1]}), ]`
   m = text.match(/^a\s+random\s+sample\s+of\s+(\d+)\s+rows?\s+(?:of|from)\s+df$/i)
   if (m) return `df[sample(nrow(df), ${m[1]}), ]`
+  m = text.match(/^take\s+a\s+random\s+sample\s+of\s+(\d+)\s+rows?(?:\s+from\s+(?:the|my|this)\s+dataset)?$/i)
+  if (m) return `df[sample(nrow(df), ${m[1]}), ]`
   return null
 }
 

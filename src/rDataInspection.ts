@@ -297,9 +297,19 @@ function trySummary(text: string): string | null {
 function tryMissingValues(text: string): string | null {
   const t = stripShowLead(text)
 
+  // A SINGLE named column's own missing count: sum(is.na(df$income)) —
+  // distinct from the per-column BREAKDOWN below (colSums over the
+  // whole data frame) and from the whole-DATA-FRAME total further down
+  // (which assumes its bare identifier is a data frame's own name, not
+  // a column inside one — see the whole-data-frame block's own comment).
+  // Checked first so "each column" (two words) never matches this
+  // single-IDENT pattern by accident.
+  let m = t.match(new RegExp(`^(?:the\\s+)?(?:number|count)\\s+of\\s+missing\\s+values?\\s+in\\s+(${IDENT})$`, 'i'))
+  if (m) return `sum(is.na(df$${m[1]}))`
+
   // Per-column count: colSums(is.na(df)) — a named vector, one count per
   // column. The headline command this category was missing.
-  let m = t.match(new RegExp(`^count\\s+(?:the\\s+)?missing\\s+values?\\s+(?:in|for)\\s+each\\s+column(?:\\s+(?:in|of)\\s+(${DATA_REF}))?$`, 'i'))
+  m = t.match(new RegExp(`^count\\s+(?:the\\s+)?missing\\s+values?\\s+(?:in|for)\\s+each\\s+column(?:\\s+(?:in|of)\\s+(${DATA_REF}))?$`, 'i'))
   if (m) return `colSums(is.na(${normalizeDataRef(m[1] ?? 'df')}))`
   m = t.match(new RegExp(`^(?:the\\s+)?(?:number|count)\\s+of\\s+missing\\s+values?\\s+per\\s+column(?:\\s+(?:in|of)\\s+(${DATA_REF}))?$`, 'i'))
   if (m) return `colSums(is.na(${normalizeDataRef(m[1] ?? 'df')}))`

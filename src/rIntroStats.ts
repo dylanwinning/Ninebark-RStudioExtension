@@ -219,10 +219,16 @@ function trySkewness(text: string): string | null {
 // tier-2 engine already computes for "at k"; this phrase just asks for
 // the other side of it directly rather than making the student subtract
 // by hand.
+// P(X > k) = 1 - P(X <= k); P(X < k) = P(X <= k - 1) — the two
+// complements of the CDF the shared tier-1/tier-2 engine already
+// computes for "at k", so the student never has to do that subtraction
+// (or the off-by-one for "fewer than") by hand.
 function tryBinomialMoreThan(text: string): string | null {
-  const m = text.match(new RegExp(`^(?:the\\s+)?probability\\s+of\\s+(?:getting\\s+)?more\\s+than\\s+(\\d+)\\s+successes?\\s+in\\s+(\\d+)\\s+trials?\\s+with\\s+probability\\s+(${NUM})$`, 'i'))
-  if (!m) return null
-  return `1 - pbinom(${m[1]}, ${m[2]}, ${m[3]})`
+  let m = text.match(new RegExp(`^(?:the\\s+)?probability\\s+of\\s+(?:getting\\s+)?more\\s+than\\s+(\\d+)\\s+successes?\\s+in\\s+(\\d+)\\s+trials?\\s+with\\s+probability\\s+(${NUM})$`, 'i'))
+  if (m) return `1 - pbinom(${m[1]}, ${m[2]}, ${m[3]})`
+  m = text.match(new RegExp(`^(?:the\\s+)?probability\\s+of\\s+(?:getting\\s+)?(?:fewer|less)\\s+than\\s+(\\d+)\\s+successes?\\s+in\\s+(\\d+)\\s+trials?\\s+with\\s+probability\\s+(${NUM})$`, 'i'))
+  if (m) return `pbinom(${Number(m[1]) - 1}, ${m[2]}, ${m[3]})`
+  return null
 }
 
 export function recognizeIntroStats(rawText: string): string | null {

@@ -37,6 +37,11 @@ function trySimpleLinearRegression(text: string): string | null {
   if (m) return `model <- lm(${m[1]} ~ ${m[2]}, data = df)`
   m = text.match(new RegExp(`^(?:fit\\s+)?a\\s+linear\\s+regression\\s+(?:of|predicting)\\s+(${IDENT})\\s+(?:on|from)\\s+(${IDENT})$`, 'i'))
   if (m) return `model <- lm(${m[1]} ~ ${m[2]}, data = df)`
+  // "fit a model predicting Y from X" — "a model" alone, no "linear
+  // regression" qualifier at all (lm() IS the obvious, only reasonable
+  // reading of a bare "model" for two numeric columns here).
+  m = text.match(new RegExp(`^fit\\s+a\\s+model\\s+predicting\\s+(${IDENT})\\s+(?:on|from)\\s+(${IDENT})$`, 'i'))
+  if (m) return `model <- lm(${m[1]} ~ ${m[2]}, data = df)`
   return null
 }
 

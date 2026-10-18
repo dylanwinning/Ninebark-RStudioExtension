@@ -273,6 +273,26 @@ X") against the FULL pipeline, not just the new file's own recognizer in
 isolation — a collision shows up only in `resolveToRStatement()`, never in
 a bare `recognizeDataCleaning()` call.
 
+**The filename-swallowing gotcha recurs per format, not just once** (found
+during a later "come up with a bunch of example inputs" stress-test pass,
+not while building the category it lives in): `rDataImport.ts`'s original
+fix for this — "my data from FILE" being swallowed whole as if the entire
+phrase were the literal filename, since a permissive filename character
+class has to allow spaces for a real filename like "my data.csv" to still
+work — only ever shipped for CSV, with "my" as the only qualifier handled.
+A broad stress test later found the SAME unfixed bug independently in
+RDS, JSON, SPSS, Stata, and Excel (none of them had the "data(set) from
+FILE" pre-check at all), AND a second gap even in the one format that WAS
+fixed — "the data from FILE" (as opposed to "my data from FILE") still got
+swallowed, because the original fix only handled "my," not "the." Both
+gaps were real and shipped for a while unnoticed, since each format's own
+category's audit pass tested only the ONE phrasing its own literal example
+happened to use. The lesson: a fix to one instance of a documented bug
+class is not a fix to the class — when the SAME permissive-pattern shape
+exists in multiple sibling functions (one per file format, one per
+statistical test, etc.), re-check EVERY sibling for the same gap, not just
+the one the current probe happened to exercise.
+
 **Base-R-subsetting-has-no-NSE gotcha** (a correctness bug, not just an
 unsupported phrasing — found while building the transforms category,
 inherited unnoticed through two earlier categories): `df[cond, ]` in BASE R
