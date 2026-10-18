@@ -133,7 +133,15 @@ order:
    independent groups", with no df-like sensible default to fall back
    on, so those get the right call shape with an obvious placeholder
    identifier and a replace-this comment instead of a guessed column
-   name, same posture as rDataImport.ts's no-filename-given case),
+   name, same posture as rDataImport.ts's no-filename-given case; also
+   covers one-tailed/directional tests, confidence intervals and
+   proportion CIs at any level — not just 95% — `before_X`/`after_X`
+   naming implying a paired test without the word "paired," and a
+   `stripTextbookWrapper()` pass that discards a problem statement's
+   surrounding wording — "at the 0.05 significance level, is there
+   sufficient evidence to conclude that..." — before handing the core
+   claim to the same patterns above; the significance level itself is
+   discarded, not parsed, since it's never an argument to `t.test()`),
    `rRegression` (lm/glm/predict/confint/update/plot.lm, plus
    `car::vif()`; several phrasings — "the EXISTING regression model",
    "the logistic regression model" — only make sense as a continuation

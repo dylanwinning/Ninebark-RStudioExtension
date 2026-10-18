@@ -191,6 +191,85 @@ describe('79. "Compare score across treatment groups using the Kruskal–Wallis 
   })
 })
 
+// A later, persona-based audit pass: "think about what [an intro stats
+// student] may struggle with most and how they might ask" — one-tailed
+// (directional) tests are the classic "which tail?" confusion, every CI
+// function defaulting to 95% is a trap for anyone whose problem actually
+// asks for 90%/99%, and homework is rarely phrased as cleanly as this
+// file's own patterns.
+describe('one-tailed (directional) one-sample t-tests — the classic "which tail?" struggle', () => {
+  it.each([
+    ['test whether the mean score is greater than 50', 't.test(df$score, mu = 50, alternative = "greater")'],
+    ['test whether the mean score is less than 50', 't.test(df$score, mu = 50, alternative = "less")'],
+    ['is the mean score greater than 50', 't.test(df$score, mu = 50, alternative = "greater")'],
+    ['test whether the mean score is greater than 50 using a one-sample t-test', 't.test(df$score, mu = 50, alternative = "greater")'],
+    ['test the claim that the mean score is greater than 70', 't.test(df$score, mu = 70, alternative = "greater")'],
+  ])('%s -> %s', (phrase, expected) => {
+    expect(resolveToRStatement(phrase)).toBe(expected)
+  })
+
+  it('the two-sided ("differs from") form also works with no "using a one-sample t-test" suffix', () => {
+    expect(resolveToRStatement('test whether the mean score differs from 50')).toBe('t.test(df$score, mu = 50)')
+  })
+})
+
+describe('confidence levels other than 95% — everyone assumes 95% is the only option', () => {
+  it.each([
+    ['calculate a 90% confidence interval for the mean income', 't.test(df$income, conf.level = 0.9)$conf.int'],
+    ['calculate a 99% confidence interval for the mean income', 't.test(df$income, conf.level = 0.99)$conf.int'],
+    ['a 90% confidence interval for income', 't.test(df$income, conf.level = 0.9)$conf.int'],
+  ])('%s -> %s', (phrase, expected) => {
+    expect(resolveToRStatement(phrase)).toBe(expected)
+  })
+
+  it('95% itself omits the redundant conf.level argument — t.test()\'s own default', () => {
+    expect(resolveToRStatement('calculate a 95% confidence interval for the mean income')).toBe('t.test(df$income)$conf.int')
+  })
+
+  it('the difference-in-means CI also generalizes past 95%', () => {
+    expect(resolveToRStatement('calculate a 90% confidence interval for the difference in mean score between treatment and control'))
+      .toBe('t.test(score ~ treatment, data = df, conf.level = 0.9)$conf.int')
+  })
+})
+
+describe('confidence interval for a proportion (not a test — just the interval)', () => {
+  it.each([
+    [
+      'calculate a 95% confidence interval for the proportion of successes',
+      'prop.test(sum(df$success_column), nrow(df))$conf.int  # replace "success_column" with your actual success/failure column',
+    ],
+    ['a 95% confidence interval for a proportion of 0.4 from a sample of 50', 'prop.test(round(0.4 * 50), 50)$conf.int'],
+  ])('%s -> %s', (phrase, expected) => {
+    expect(resolveToRStatement(phrase)).toBe(expected)
+  })
+})
+
+describe('textbook-exact wordy phrasing — homework is rarely phrased as cleanly as this file\'s own patterns', () => {
+  it.each([
+    [
+      'at the 0.05 significance level, is there sufficient evidence to conclude that the mean score differs from 50',
+      't.test(df$score, mu = 50)',
+    ],
+    ['is there enough evidence to conclude that the mean score differs from 50 at the 5% level', 't.test(df$score, mu = 50)'],
+    ['conduct a hypothesis test to determine whether the mean score differs from 50', 't.test(df$score, mu = 50)'],
+  ])('the significance-level clause is discarded (it\'s not a t.test() argument, just the threshold a student compares the p-value to by hand): %s -> %s', (phrase, expected) => {
+    expect(resolveToRStatement(phrase)).toBe(expected)
+  })
+})
+
+describe('"before_X"/"after_X" naming implies a paired test, without the word "paired" ever appearing', () => {
+  it.each([
+    ['test whether before_score and after_score are different', 't.test(df$before_score, df$after_score, paired = TRUE)'],
+    ['is there a difference between before_score and after_score', 't.test(df$before_score, df$after_score, paired = TRUE)'],
+  ])('%s -> %s', (phrase, expected) => {
+    expect(resolveToRStatement(phrase)).toBe(expected)
+  })
+
+  it('only fires when both identifiers share the exact same suffix — never a generic "are X and Y different" guess', () => {
+    expect(() => resolveToRStatement('test whether before_score and after_income are different')).toThrow()
+  })
+})
+
 describe('safety: declines rather than guesses', () => {
   it.each([
     'asdkjhaskjdhaskjdh',

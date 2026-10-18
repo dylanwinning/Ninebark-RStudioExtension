@@ -140,6 +140,35 @@ describe('binomial "more than k successes" (the complement of the shared engine\
   })
 })
 
+describe('sample size planning — "how big does my sample need to be?"', () => {
+  it('what sample size do I need for a margin of error of 5 with a standard deviation of 10 -> ceiling((qnorm(0.975) * 10 / 5) ^ 2)', () => {
+    expect(resolveToRStatement('what sample size do I need for a margin of error of 5 with a standard deviation of 10'))
+      .toBe('ceiling((qnorm(0.975) * 10 / 5) ^ 2)')
+  })
+
+  it('generalizes past the implicit 95% default when a level is named', () => {
+    expect(resolveToRStatement('the sample size needed for a 99% confidence interval with a margin of error of 2 and a standard deviation of 8'))
+      .toBe('ceiling((qnorm(0.995) * 8 / 2) ^ 2)')
+  })
+
+  it('an under-specified ask (no standard deviation given) correctly declines rather than guessing one', () => {
+    expect(() => resolveToRStatement('the sample size needed for a 95% confidence interval with a margin of error of 2')).toThrow()
+  })
+})
+
+describe('degrees of freedom from a sample size alone', () => {
+  it.each([
+    ['the degrees of freedom for a sample of 25', '24'],
+    ['the degrees of freedom for a one-sample t-test with a sample size of 25', '24'],
+  ])('%s -> %s', (phrase, expected) => {
+    expect(resolveToRStatement(phrase)).toBe(expected)
+  })
+
+  it('the two-independent-samples case has no simple closed form and is correctly declined, not guessed', () => {
+    expect(() => resolveToRStatement('the degrees of freedom for two samples of 15 and 20')).toThrow()
+  })
+})
+
 describe('safety: declines rather than guesses', () => {
   it.each([
     'asdkjhaskjdhaskjdh',

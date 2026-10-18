@@ -163,6 +163,37 @@ function tryMarginOfError(text: string): string | null {
   return null
 }
 
+// ── Sample size planning ─────────────────────────────────────────────────
+// "how big does my sample need to be?" — a classic planning-ahead
+// exercise, answerable only when BOTH a margin of error and a (known or
+// assumed) standard deviation are given; z-based (not t-based), since
+// sample size isn't known yet — there's no df to look up.
+function buildSampleSize(marginOfError: number, sd: number, level: number): string {
+  const q = (1 + level / 100) / 2
+  return `ceiling((qnorm(${q}) * ${sd} / ${marginOfError}) ^ 2)`
+}
+
+function trySampleSizeForMean(text: string): string | null {
+  let m = text.match(new RegExp(`^(?:what\\s+)?sample\\s+size\\s+do\\s+i\\s+need\\s+for\\s+a\\s+margin\\s+of\\s+error\\s+of\\s+(${NUM})\\s+with\\s+a\\s+standard\\s+deviation\\s+of\\s+(${NUM})$`, 'i'))
+  if (m) return buildSampleSize(Number(m[1]), Number(m[2]), 95)
+  m = text.match(new RegExp(`^(?:the\\s+)?sample\\s+size\\s+needed\\s+for\\s+a\\s+(\\d+)%?\\s+confidence\\s+interval\\s+with\\s+a\\s+margin\\s+of\\s+error\\s+of\\s+(${NUM})\\s+and\\s+a\\s+standard\\s+deviation\\s+of\\s+(${NUM})$`, 'i'))
+  if (m) return buildSampleSize(Number(m[2]), Number(m[3]), Number(m[1]))
+  return null
+}
+
+// ── Degrees of freedom from a sample size alone ──────────────────────────
+// Only the one-sample case (n - 1) — the two-independent-samples case has
+// no simple closed form once variances are allowed to differ (Welch's
+// approximation needs both groups' SDs, not just their sizes), so that
+// case is correctly left declined rather than guessed at.
+function tryDegreesOfFreedomFromN(text: string): string | null {
+  let m = text.match(/^(?:the\s+)?degrees\s+of\s+freedom\s+for\s+a\s+sample\s+of\s+(\d+)$/i)
+  if (m) return String(Number(m[1]) - 1)
+  m = text.match(/^(?:the\s+)?degrees\s+of\s+freedom\s+for\s+a\s+one[\s-]sample\s+t[\s-]?test\s+with\s+a\s+sample\s+size\s+of\s+(\d+)$/i)
+  if (m) return String(Number(m[1]) - 1)
+  return null
+}
+
 // ── Coefficient of variation ─────────────────────────────────────────────
 function tryCoefficientOfVariation(text: string): string | null {
   const m = text.match(/^(?:the\s+)?coefficient\s+of\s+variation\s+of\s+(.+)$/i)
@@ -205,6 +236,8 @@ export function recognizeIntroStats(rawText: string): string | null {
     tryRegressionLineBasics(text) ??
     tryCriticalValue(text) ??
     tryMarginOfError(text) ??
+    trySampleSizeForMean(text) ??
+    tryDegreesOfFreedomFromN(text) ??
     tryCoefficientOfVariation(text) ??
     trySkewness(text) ??
     tryBinomialMoreThan(text)

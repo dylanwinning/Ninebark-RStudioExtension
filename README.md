@@ -324,6 +324,21 @@ In plain English:
   shape with an obvious placeholder identifier (`group_column`,
   `success_column`) and a comment telling you what to replace, rather
   than guessing a real column name that would likely be wrong.
+  One-tailed tests work too — "test whether the mean score is greater
+  than 50" (also "less than" — the classic one-tailed-vs-two-tailed fork
+  students get stuck on) — and every confidence-interval phrasing here
+  accepts any level, not just 95% ("a 90% confidence interval for
+  income"; 95% itself omits the redundant `conf.level` argument, since
+  that's R's own default). A confidence interval for a bare proportion
+  also works ("a 95% confidence interval for a proportion of 0.4 from a
+  sample of 50"), as does "before_X"/"after_X" naming implying a paired
+  test without the word "paired" ever appearing, and the wordier way a
+  problem statement actually reads ("at the 0.05 significance level, is
+  there sufficient evidence to conclude that the mean score differs from
+  50", "conduct a hypothesis test to determine whether...") — the
+  significance-level clause itself is discarded, not parsed, since it's
+  not an argument to `t.test()` at all, just the threshold compared to
+  the reported p-value afterward.
 - **Regression & modeling**: "regress score on study_hours using linear
   regression", "predict income using education, age, and experience in a
   multiple linear regression", "add age as an additional predictor to the
@@ -381,8 +396,15 @@ In plain English:
   plain z critical value with no degrees of freedom given), "the margin
   of error for a 95% confidence interval for the mean income", "the
   coefficient of variation of income", "the skewness of score" (needs
-  the `e1071` package — base R stops at the second moment, sd()). A few
-  genuinely context-dependent asks ("what's the p-value", "should I
+  the `e1071` package — base R stops at the second moment, sd()), "what
+  sample size do I need for a margin of error of 5 with a standard
+  deviation of 10" (a planning-ahead question, only answerable once both
+  numbers are actually given — an under-specified version of this
+  correctly declines rather than guessing a standard deviation), "the
+  degrees of freedom for a sample of 25" (just the one-sample case,
+  `n - 1` — the two-independent-samples case has no simple closed form
+  once variances are allowed to differ, so that's left declined too). A
+  few genuinely context-dependent asks ("what's the p-value", "should I
   reject the null hypothesis") are a deliberate gap: there's no stored
   "last test result" this stateless pipeline could reason from, so
   guessing which test is meant would risk a silently wrong answer.
