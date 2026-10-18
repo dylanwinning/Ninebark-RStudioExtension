@@ -60,24 +60,25 @@ test_that("nb_manual_outcome() names the right target and never throws", {
   )
 })
 
-# ── Regression tests: the "silently queued, never runs" bug ────────────────
+# ── Regression tests: queue it, then let the panel's own close run it ──────
 # shiny::runGadget() blocks R's interpreter for as long as this panel is
 # open, so rstudioapi::sendToConsole(execute = TRUE) only QUEUES a command
-# at the console -- it can't evaluate until the gadget closes, and
-# sendToConsole() itself doesn't error just because R can't get around to
-# running it, so an earlier version of nb_dispatch() called it with
-# execute = TRUE and wrongly reported "ran in the Console" when nothing had
-# actually run. The headless "RStudio not running" error the tests above
-# rely on happens too early to catch THIS specific mistake (it masks
-# whatever arguments were passed), so these tests mock
-# rstudioapi::sendToConsole()/insertText() directly to inspect the actual
-# call -- this is what would have caught the bug before it shipped.
+# at the console -- it can't evaluate until the gadget closes. An earlier
+# version of this file used execute = TRUE WITHOUT closing the panel
+# afterward, and wrongly reported "ran in the Console" when nothing had
+# actually run yet. The fix pinned here isn't "never use execute = TRUE" --
+# it's "use execute = TRUE AND have the panel close itself right after,"
+# which is what actually lets the queued command run with no manual step.
+# The headless "RStudio not running" error the tests above rely on happens
+# too early to catch any of this (it masks whatever arguments were passed),
+# so these tests mock rstudioapi::sendToConsole()/insertText() directly to
+# inspect the actual call.
 
-test_that("the Console target sends execute = FALSE, never TRUE, and says to close the panel first", {
+test_that("the Console target sends execute = TRUE and signals the panel to close so the queued command can run", {
   calls <- list()
   testthat::local_mocked_bindings(
     sendToConsole = function(code, execute = TRUE, echo = TRUE, focus = TRUE, animate = FALSE) {
-      calls[[length(calls) + 1]] <<- list(code = code, execute = execute)
+      calls[[length(calls) + 1]] <<- list(code = code, execute = execute, focus = focus)
       invisible(NULL)
     },
     .package = "rstudioapi"
@@ -85,14 +86,14 @@ test_that("the Console target sends execute = FALSE, never TRUE, and says to clo
   outcome <- ninebark:::nb_dispatch(list(target = "console", code = "mean(c(1, 2, 3))"))
 
   expect_length(calls, 1)
-  expect_identical(calls[[1]]$execute, FALSE)
+  expect_identical(calls[[1]]$execute, TRUE)
+  expect_identical(calls[[1]]$focus, TRUE)
   expect_identical(calls[[1]]$code, "mean(c(1, 2, 3))")
-  expect_match(outcome, "close this panel", fixed = TRUE)
-  expect_match(outcome, "press Enter", fixed = TRUE)
-  expect_no_match(outcome, "^ran in the Console")
+  expect_true(outcome$close)
+  expect_match(outcome$message, "^ran in the Console")
 })
 
-test_that("the Source target still calls insertText() and genuinely reports it as done (unaffected by the console-blocking issue)", {
+test_that("the Source target still calls insertText(), reports it as done, and never asks to close the panel", {
   inserted <- NULL
   testthat::local_mocked_bindings(
     getSourceEditorContext = function() list(id = "doc1", path = "/tmp/script.R"),
@@ -103,5 +104,25 @@ test_that("the Source target still calls insertText() and genuinely reports it a
 
   expect_equal(inserted$text, "x <- 5\n")
   expect_equal(inserted$id, "doc1")
-  expect_match(outcome, "^inserted into script\\.R")
+  expect_match(outcome$message, "^inserted into script\\.R")
+  expect_false(outcome$close)
+})
+
+test_that("nb_run_one() propagates close = TRUE up from a successful Console auto-fill dispatch", {
+  testthat::local_mocked_bindings(
+    sendToConsole = function(code, execute = TRUE, echo = TRUE, focus = TRUE, animate = FALSE) invisible(NULL),
+    .package = "rstudioapi"
+  )
+  result <- ninebark:::nb_run_one("let x be 5", auto = TRUE)
+  expect_true(result$close)
+  expect_match(result$entry, "ran in the Console", fixed = TRUE)
+})
+
+test_that("nb_run_one() never sets close = TRUE for manual mode, a Source dispatch, a failed dispatch, or an unrecognized phrase", {
+  expect_false(isTRUE(ninebark:::nb_run_one("let x be 5", auto = FALSE)$close))
+  expect_false(isTRUE(ninebark:::nb_run_one("in the script let x be 5", auto = TRUE)$close))
+  # Headless: sendToConsole() throws "RStudio not running", caught by
+  # nb_run_one()'s own tryCatch -- a failed dispatch leaves close unset.
+  expect_false(isTRUE(ninebark:::nb_run_one("let x be 5", auto = TRUE)$close))
+  expect_false(isTRUE(ninebark:::nb_run_one("asdkjhaskjdhaskjdh", auto = TRUE)$close))
 })

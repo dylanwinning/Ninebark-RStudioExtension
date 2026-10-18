@@ -5,9 +5,9 @@
 # through rstudioapi -- insertText() into the active Source document for the
 # Source target ("in the script ...", inserted unexecuted; this genuinely
 # runs immediately, see nb_dispatch()'s comment for why), sendToConsole()
-# for the Console target (typed in, ready to run -- NOT executed
-# automatically; same comment explains why "Auto-fill" can't mean instant
-# EXECUTION for the Console specifically, only instant typing) -- OR, when
+# for the Console target (queued to run, panel closing itself right after so
+# that queued run can actually happen -- see nb_dispatch()'s comment for why
+# the close is the panel's own job now, not a manual step) -- OR, when
 # the "Auto-fill in RStudio" toggle is off, just shown in a copyable box so
 # the user pastes and runs it themselves. rstudioapi is the one and only
 # thing this file touches to reach the editor (in auto-fill mode), which is
@@ -21,7 +21,8 @@ nb_log_entry <- function(input_text, outcome_text) {
   sprintf("%s\n  -> %s\n%s", input_text, outcome_text, strrep("-", 44))
 }
 
-# -- Why the Console target can't auto-EXECUTE while this panel is open -----
+# -- Why the Console target can't auto-EXECUTE while this panel is open,
+# and how it still ends up running with no manual step -------------------
 # shiny::runGadget() (called at the bottom of ninebark_addin()) blocks R's
 # single interpreter thread for as long as the gadget stays open -- this is
 # standard, well-documented Shiny behavior (runApp()/runGadget() run their
@@ -36,51 +37,61 @@ nb_log_entry <- function(input_text, outcome_text) {
 # result (confirmed against real-world addin reports of the same thing,
 # and the RStudio Addins/Shiny Gadgets pattern of only touching the console
 # from a `done`/close handler, never while a gadget is still running): the
-# command gets silently QUEUED at the console, sendToConsole() itself
-# returns without error, and this file used to report "ran in the Console"
-# -- a false claim, since nothing had actually run yet, and would not until
-# the user closed the panel. (insertText(), used for the Source target
-# below, is NOT affected: it's a pure editor-document edit the IDE can
-# complete on its own, with no dependency on R's top-level prompt being
-# free -- so that path genuinely does run immediately, panel open or not.)
-#
-# The honest, always-correct behavior for the Console target, implemented
-# below: TYPE the code into the console's input line (execute = FALSE --
-# this itself is not affected by the same blocking, since it's the IDE
-# populating a text field, not asking R to evaluate anything) so it's
-# sitting there ready, and say plainly that closing this panel first is
-# what actually lets it run -- never claim it already ran.
+# command gets silently QUEUED at the console -- sendToConsole() itself
+# returns without error, R's R top-level is exactly where typed-ahead input
+# normally waits its turn, and it runs the moment R next reaches that
+# prompt. An earlier version of this file called sendToConsole(execute =
+# FALSE) and told the user to close the panel and press Enter themselves --
+# correct, but a manual step that didn't need to be manual: once we KNOW
+# the queued input will run as soon as the panel closes, the panel can just
+# close ITSELF right after queuing it (see do_run()'s `close` handling
+# below), which is exactly what turns "close this, then press Enter" into
+# nothing the user has to do by hand. (insertText(), used for the Source
+# target below, is NOT affected by any of this: it's a pure editor-document
+# edit the IDE can complete on its own, with no dependency on R's top-level
+# prompt being free -- so that path genuinely does run immediately, panel
+# open or not, and never needs to close anything.)
 nb_dispatch <- function(result) {
   # result$ok is TRUE here (checked by the caller) -- this only decides
   # WHERE the resolved code goes and reports back what happened, mirroring
   # dispatchRCommand() in the TypeScript engine's rExecClient.ts. Only
   # called when the "Auto-fill in RStudio" toggle is on -- see
   # nb_manual_outcome() for the off case, which never touches rstudioapi.
+  # Returns list(message = <log text>, close = <should the panel close
+  # itself right after this?>) -- `close` is TRUE only for the Console
+  # target, since that's the one case where closing is what lets the
+  # already-queued command actually run (see the comment above). focus =
+  # TRUE (unlike the old execute = FALSE version, which deliberately left
+  # focus alone since nothing was about to run) -- now that this really is
+  # about to execute, switching to the Console is what lets the user
+  # actually see the output land.
   if (identical(result$target, "console")) {
-    rstudioapi::sendToConsole(result$code, execute = FALSE, echo = TRUE, focus = FALSE)
-    return(sprintf(
-      "typed into the Console -- close this panel, then press Enter there to run it:  %s",
-      result$code
+    rstudioapi::sendToConsole(result$code, execute = TRUE, echo = TRUE, focus = TRUE)
+    return(list(
+      message = sprintf("ran in the Console (closing this panel to let it submit):  %s", result$code),
+      close = TRUE
     ))
   }
 
   ctx <- tryCatch(rstudioapi::getSourceEditorContext(), error = function(e) NULL)
   if (is.null(ctx)) {
-    return(sprintf(
-      "resolved, but no Source file is open to insert into (open a .R file first):  %s",
-      result$code
+    return(list(
+      message = sprintf("resolved, but no Source file is open to insert into (open a .R file first):  %s", result$code),
+      close = FALSE
     ))
   }
   rstudioapi::insertText(text = paste0(result$code, "\n"), id = ctx$id)
   label <- if (nzchar(ctx$path)) basename(ctx$path) else "the untitled Source file"
-  sprintf("inserted into %s:  %s", label, result$code)
+  list(message = sprintf("inserted into %s:  %s", label, result$code), close = FALSE)
 }
 
 # The "Auto-fill in RStudio" toggle is off: resolve, but never call
 # rstudioapi at all -- the resolved code is shown in the "Resolved R" box
 # (nb_addin_ui()'s uiOutput("nb_resolved")) for the user to copy and paste
 # themselves, whichever target it's headed for. This function only builds
-# the log message; nb_run_one() is what skips calling nb_dispatch().
+# the log message; nb_run_one() is what skips calling nb_dispatch(). Never
+# closes the panel itself -- with auto-fill off nothing was queued anywhere,
+# so there's nothing a close would let run.
 nb_manual_outcome <- function(result) {
   if (identical(result$target, "console")) {
     # Pasting into the Console and pressing Enter needs R to be at its
@@ -97,11 +108,16 @@ nb_manual_outcome <- function(result) {
 }
 
 # Returns list(entry = <one log block, always>, code = <the resolved R, or
-# NULL when resolution failed>) -- NULL text input is skipped entirely
-# (returns NULL), same as before. `code` lets the caller update the
-# "Resolved R" copy box regardless of whether auto-run dispatched it or the
-# user is going to paste it themselves -- useful either way, so it's
-# populated in both modes, not just when auto-run is off.
+# NULL when resolution failed>, close = <should the panel close itself
+# right after this?>) -- NULL text input is skipped entirely (returns
+# NULL), same as before. `code` lets the caller update the "Resolved R"
+# copy box regardless of whether auto-run dispatched it or the user is
+# going to paste it themselves -- useful either way, so it's populated in
+# both modes, not just when auto-run is off. `close` is only ever TRUE for
+# a successful auto-fill dispatch to the Console (see nb_dispatch()) --
+# every other case (manual mode, Source target, a failed dispatch, an
+# unrecognized phrase) leaves the panel open, since there's nothing queued
+# anywhere that closing would help.
 nb_run_one <- function(raw_text, auto) {
   text <- trimws(raw_text)
   if (!nzchar(text)) return(NULL)
@@ -119,18 +135,21 @@ nb_run_one <- function(raw_text, auto) {
   nb_log_input(text, isTRUE(result$ok))
 
   if (isTRUE(result$ok)) {
-    outcome <- if (isTRUE(auto)) {
+    dispatched <- if (isTRUE(auto)) {
       tryCatch(
         nb_dispatch(result),
-        error = function(e) sprintf("resolved but couldn't dispatch (%s):  %s", conditionMessage(e), result$code)
+        error = function(e) list(
+          message = sprintf("resolved but couldn't dispatch (%s):  %s", conditionMessage(e), result$code),
+          close = FALSE
+        )
       )
     } else {
-      nb_manual_outcome(result)
+      list(message = nb_manual_outcome(result), close = FALSE)
     }
-    list(entry = nb_log_entry(text, outcome), code = result$code)
+    list(entry = nb_log_entry(text, dispatched$message), code = result$code, close = isTRUE(dispatched$close))
   } else {
     outcome <- if (is.null(result$error)) "unrecognized command" else result$error
-    list(entry = nb_log_entry(text, outcome), code = NULL)
+    list(entry = nb_log_entry(text, outcome), code = NULL, close = FALSE)
   }
 }
 
@@ -262,13 +281,14 @@ nb_addin_ui <- function() {
 #'
 #' The "Auto-fill in RStudio" checkbox (on by default) controls what
 #' happens next: on, the resolved R for the Source target is inserted
-#' immediately, and for the Console target is typed into the Console ready
-#' to go (close this panel, then press Enter there to actually run it --
-#' RStudio can't evaluate new Console input while this panel's own Shiny
-#' process is running, so nothing can auto-execute there while it's open,
-#' only auto-type); off, nothing is inserted or typed automatically -- the
-#' resolved R instead appears in a "Resolved R" box you click to select and
-#' copy, to paste in yourself wherever and whenever you want.
+#' immediately, and for the Console target is queued to run and this panel
+#' closes itself right away so that run can actually happen (RStudio can't
+#' evaluate new Console input while this panel's own Shiny process is
+#' running, so the close is what lets the already-queued command go through
+#' -- you never have to close it or press Enter yourself; reopen the Addin
+#' for your next command); off, nothing is inserted or typed automatically
+#' -- the resolved R instead appears in a "Resolved R" box you click to
+#' select and copy, to paste in yourself wherever and whenever you want.
 #'
 #' @export
 ninebark_addin <- function() {
@@ -308,6 +328,16 @@ ninebark_addin <- function() {
       if (!is.null(result)) {
         log_entries(c(result$entry, log_entries()))
         if (!is.null(result$code)) last_code(result$code)
+        # A successful auto-fill dispatch to the Console (see
+        # nb_dispatch()) already queued the command at R's top-level
+        # prompt -- closing the panel right now is what lets R get back
+        # to that prompt and actually run it, so the user never has to
+        # close this themselves or go press Enter in the Console by hand.
+        # Skips clearing the input box below: the panel's going away.
+        if (isTRUE(result$close)) {
+          shiny::stopApp()
+          return(invisible(NULL))
+        }
       }
       shiny::updateTextInput(session, "nb_input", value = "")
     }
