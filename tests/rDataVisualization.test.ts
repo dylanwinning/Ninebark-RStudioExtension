@@ -75,6 +75,23 @@ describe('60. "Create a stacked bar chart of treatment by outcome." — stacked 
   })
 })
 
+describe('60b. "Create a pie chart of treatment." — pie chart (categorical column counts)', () => {
+  it.each([
+    ['Create a pie chart of treatment.', 'pie(table(df$treatment))'],
+    ['create a pie chart of treatment', 'pie(table(df$treatment))'],
+    ['make a pie chart of education', 'pie(table(df$education))'],
+    ['draw a pie chart of gender', 'pie(table(df$gender))'],
+    // The reported gap: a bare-identifier data frame literally named
+    // "data" works fine for rPlotting.ts's standalone-vector form
+    // (below), but "create a ... of data" is this file's column form —
+    // "data" here means a COLUMN of df, same convention as every other
+    // chart type in this file, not the user's own data-frame variable.
+    ['create a pie chart of data', 'pie(table(df$data))'],
+  ])('%s -> %s', (phrase, expected) => {
+    expect(resolveToRStatement(phrase)).toBe(expected)
+  })
+})
+
 describe('61. "Create a line chart of sales over time, using date on the x-axis." — line chart over time', () => {
   it.each([
     [
@@ -159,6 +176,14 @@ describe('does not disturb rPlotting.ts\'s existing standalone-vector plotting v
     ['plot y against x', 'plot(x, y)'],
     ['bar chart of counts', 'barplot(counts)'],
     ['line chart of y vs x', 'plot(x, y, type = "l")'],
+    ['pie chart of x', 'pie(x)'],
+    // Same bare identifier the pie-chart column test above uses with a
+    // lead verb — here, with NO lead verb, "data" means a standalone
+    // vector someone built directly (e.g. "let data be a vector of
+    // 10,20,30"), not a column of df — the exact ambiguity this file's
+    // header comment documents, resolved the same way for every chart
+    // type, pie chart included.
+    ['pie chart of data', 'pie(data)'],
   ])('the bare, no-lead-verb form still means a standalone vector, unchanged: %s -> %s', (phrase, expected) => {
     expect(resolveToRStatement(phrase)).toBe(expected)
   })

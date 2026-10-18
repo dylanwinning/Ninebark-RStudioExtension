@@ -54,7 +54,8 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'create a scatterplot of study_hours against score',
     'add a linear regression line to the scatterplot of study_hours against score',
     'create a bar chart showing the number of observations in each major',
-    'create a stacked bar chart of treatment by outcome', 'create a Q-Q plot of score',
+    'create a stacked bar chart of treatment by outcome', 'create a pie chart of treatment',
+    'create a Q-Q plot of score',
     'create a correlation matrix heatmap for all numeric variables',
   ] },
   { title: 'Statistical tests', examples: [

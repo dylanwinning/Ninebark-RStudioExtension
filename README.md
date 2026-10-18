@@ -319,7 +319,11 @@ way, in plain English:
   scatterplot of study_hours against score" (and "add a linear
   regression line to" that same scatterplot), "create a bar chart showing
   the number of observations in each major", "create a stacked bar chart
-  of treatment by outcome", "create a line chart of sales over time,
+  of treatment by outcome", "create a pie chart of treatment" (a
+  categorical column's counts, `pie(table(df$treatment))` — same table()
+  wrapping the bar-chart forms above use, not a bare `pie(df$treatment)`,
+  since treatment holds category labels, not slice sizes), "create a line
+  chart of sales over time,
   using date on the x-axis", "create a Q-Q plot of score", "create a
   correlation matrix heatmap for all numeric variables", "plot the mean
   score for each treatment group with 95% confidence intervals" (needs

@@ -91,6 +91,22 @@ function tryStackedBarChart(text: string): string | null {
   return `barplot(table(df$${m[1]}, df$${m[2]}), legend = TRUE)`
 }
 
+// ── 60b. Pie chart ───────────────────────────────────────────────────────
+// "create a pie chart of treatment" — a CATEGORICAL column's counts, the
+// same table() wrapping tryCountBarChart/tryStackedBarChart above use, not
+// a bare pie(df$treatment) (treatment holds category labels, not slice
+// sizes — pie() needs the latter, exactly what table() produces). This is
+// the data-frame-column sibling of rPlotting.ts's tryPie ("pie chart of
+// x"), which stays bare pie(x) because a bare vector IS already assumed to
+// hold slice sizes directly (e.g. "let x be a vector of 10,20,30") — same
+// standalone-vector-vs-data-frame-column split as every other chart type
+// in this file, see the header comment.
+function tryPieChart(text: string): string | null {
+  const m = text.match(new RegExp(`^${CREATE_LEAD}pie\\s*chart\\s+of\\s+(${IDENT})$`, 'i'))
+  if (!m) return null
+  return `pie(table(df$${m[1]}))`
+}
+
 // ── 61. Line chart over a time/date axis ────────────────────────────────
 // "A over time, using B on the x-axis" — "time" in the first clause is
 // just descriptive, not a literal column; B (named explicitly) is the
@@ -152,6 +168,7 @@ export function recognizeDataVisualization(rawText: string): string | null {
     tryRegressionLineOnScatter(text) ??
     tryCountBarChart(text) ??
     tryStackedBarChart(text) ??
+    tryPieChart(text) ??
     tryLineChartOverTime(text) ??
     tryQQPlot(text) ??
     tryCorrelationHeatmap(text) ??
