@@ -36,7 +36,13 @@ const SUCCESS_NOTE = `  # replace "${SUCCESS_PH}" with your actual success/failu
 // match for that one recurring phrase, not a generic "group A and group
 // B" parser (which would have no reliable way to turn two arbitrary level
 // names into a column name for any other pair of words).
-const TREATMENT_CONTROL = String.raw`(?:the\s+)?treatment\s+and\s+control\s+groups?`
+// "groups?" is OPTIONAL — "between treatment and control" (no "groups"
+// at all) is just as natural as "between the treatment and control
+// groups," and rResearchWorkflow.ts's own later copy of this same
+// constant already had to make it optional for exactly that reason
+// (Cohen's d's own literal example omits "groups"); carried back here
+// so this file's phrasings accept the same range.
+const TREATMENT_CONTROL = String.raw`(?:the\s+)?treatment\s+and\s+control(?:\s+groups?)?`
 
 // "greater"/"less" — the ONE decision every one-tailed test problem
 // actually hinges on, and the single most common place an intro-stats
@@ -185,6 +191,19 @@ function tryTwoProportionTest(text: string): string | null {
   return `prop.test(table(df$treatment, df$${SUCCESS_PH}))${SUCCESS_NOTE}`
 }
 
+// Confidence interval for the DIFFERENCE in proportions — rounds out the
+// "CI for X" family (mean, difference in means, a single proportion)
+// with the one combination of "difference" and "proportion" together
+// that was still missing. prop.test() on a 2x2 table ALREADY reports
+// $conf.int for p1 - p2 by default (confirmed against real R, not
+// assumed), so this reuses the exact same table() call as the two-
+// proportion TEST above and just reads a different field off it.
+function tryCIForDiffProportions(text: string): string | null {
+  const m = text.match(new RegExp(`^(?:calculate\\s+)?a\\s+(\\d+)%?\\s*confidence\\s+interval\\s+for\\s+the\\s+difference\\s+in\\s+(?:proportions|success\\s+rates)\\s+between\\s+${TREATMENT_CONTROL}$`, 'i'))
+  if (!m) return null
+  return `prop.test(table(df$treatment, df$${SUCCESS_PH})${confLevelArg(Number(m[1]))})$conf.int${SUCCESS_NOTE}`
+}
+
 // ── 75. Chi-squared test of association ─────────────────────────────────
 function tryChiSquared(text: string): string | null {
   const m = text.match(new RegExp(`^test\\s+(?:whether|if)\\s+(${IDENT})\\s+and\\s+(${IDENT})\\s+are\\s+associated\\s+using\\s+a\\s+chi[\\s-]?squared?\\s+test$`, 'i'))
@@ -258,6 +277,7 @@ function tryAllStatisticalTests(text: string): string | null {
     tryCIForProportion(text) ??
     tryOneSampleProp(text) ??
     tryTwoProportionTest(text) ??
+    tryCIForDiffProportions(text) ??
     tryChiSquared(text) ??
     tryFisherExact(text) ??
     tryOneWayAnova(text) ??

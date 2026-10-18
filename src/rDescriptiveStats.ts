@@ -130,6 +130,20 @@ function tryPercentiles(text: string): string | null {
   return `quantile(df$${m[2]}, probs = ${probsArg}, na.rm = TRUE)`
 }
 
+// "the first quartile of score" / "Q1 of score" / "the third quartile of
+// income" — textbook-exact intro-stats terminology for exactly the 25th/
+// 75th percentile tryPercentiles above already computes, just named
+// differently (quartiles, not percentiles) — a student reaching for "Q1"
+// has no reason to know those are the same request.
+const QUARTILE_PROB: Record<string, number> = { first: 0.25, second: 0.5, third: 0.75 }
+function tryQuartile(text: string): string | null {
+  let m = text.match(new RegExp(`^(?:the\\s+)?(first|second|third)\\s+quartile\\s+of\\s+(${IDENT})$`, 'i'))
+  if (m) return `quantile(df$${m[2]}, probs = ${QUARTILE_PROB[m[1].toLowerCase()]}, na.rm = TRUE)`
+  m = text.match(new RegExp(`^(?:the\\s+)?Q([123])\\s+of\\s+(${IDENT})$`, 'i'))
+  if (m) return `quantile(df$${m[2]}, probs = ${[0.25, 0.5, 0.75][Number(m[1]) - 1]}, na.rm = TRUE)`
+  return null
+}
+
 // ── 48. frequency table ───────────────────────────────────────────────────
 // "create a frequency table for education" / "the frequency of education".
 function tryFrequencyTable(text: string): string | null {
@@ -137,6 +151,19 @@ function tryFrequencyTable(text: string): string | null {
   if (m) return `table(df$${m[1]})`
   m = text.match(statPattern('frequenc(?:y|ies)'))
   if (m) return `table(df$${m[1]})`
+  return null
+}
+
+// "a relative frequency table for education" / "the relative frequency of
+// education" — the exact same prop.table() as item 49's "percentage/
+// proportion of observations in each category" below, just reached via
+// different, equally common textbook wording ("relative frequency" is
+// the standard term paired with "frequency table" in most intro texts).
+function tryRelativeFrequencyTable(text: string): string | null {
+  let m = text.match(new RegExp(`^(?:create\\s+)?(?:a\\s+)?relative\\s+frequency\\s+table\\s+(?:for|of)\\s+(${IDENT})$`, 'i'))
+  if (m) return `prop.table(table(df$${m[1]}))`
+  m = text.match(statPattern('relative\\s+frequenc(?:y|ies)'))
+  if (m) return `prop.table(table(df$${m[1]}))`
   return null
 }
 
@@ -228,7 +255,9 @@ export function recognizeDescriptiveStats(rawText: string): string | null {
     tryMinMaxRange(text) ??
     tryIQR(text) ??
     tryPercentiles(text) ??
+    tryQuartile(text) ??
     tryFrequencyTable(text) ??
+    tryRelativeFrequencyTable(text) ??
     tryPercentageByCategory(text) ??
     tryContingencyTable(text) ??
     tryGroupedStats(text) ??

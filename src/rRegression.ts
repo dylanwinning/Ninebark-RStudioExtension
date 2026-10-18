@@ -91,6 +91,26 @@ function tryPredictedValues(text: string): string | null {
   return null
 }
 
+// "the residuals of the regression model" — a distinct, real ask from
+// predicted/fitted values above (actual minus predicted, not the
+// predictions themselves), textbook-standard terminology for exactly
+// this.
+function tryResiduals(text: string): string | null {
+  if (/^(?:the\s+)?residuals\s+(?:of|from|for)\s+the\s+(?:regression\s+)?model$/i.test(text)) return 'residuals(model)'
+  return null
+}
+
+// A prediction interval for a NEW observation at a given predictor value
+// — genuinely different from (and wider than) a confidence interval for
+// the mean response, the exact distinction base R's predict(interval=)
+// argument itself draws.
+function tryPredictionInterval(text: string): string | null {
+  const m = text.match(new RegExp(`^(?:a\\s+)?(\\d+)%?\\s*prediction\\s+interval\\s+for\\s+(${IDENT})\\s+given\\s+(${IDENT})\\s+is\\s+(-?[\\d.]+)$`, 'i'))
+  if (!m) return null
+  const level = Number(m[1]) / 100
+  return `predict(model, newdata = data.frame(${m[3]} = ${m[4]}), interval = "prediction", level = ${level})`
+}
+
 // ── 86. Diagnostic plots ────────────────────────────────────────────────
 // plot.lm()'s which = 1 (residuals vs. fitted) and which = 2 (normal
 // Q-Q) — the two diagnostics this phrase names, not the full
@@ -149,6 +169,8 @@ export function recognizeRegression(rawText: string): string | null {
     tryAddInteraction(text) ??
     tryCIForCoefficients(text) ??
     tryPredictedValues(text) ??
+    tryResiduals(text) ??
+    tryPredictionInterval(text) ??
     tryDiagnosticPlots(text) ??
     tryLogisticRegression(text) ??
     tryOddsRatios(text) ??

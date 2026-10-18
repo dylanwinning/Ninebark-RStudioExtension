@@ -412,6 +412,26 @@ be a syntactically valid identifier. When adding any "TRIGGER_WORD
 (a truncated phrase) before trusting it — "mean of", not just "mean of
 income".
 
+**Stale-duplicate-constant gotcha** (the per-file-duplication convention's
+own failure mode, distinct from the filename- and generic-pattern-collision
+gotchas above): small regex fragments meant to read identically everywhere
+(`TREATMENT_CONTROL`, matching "the treatment and control groups") are
+duplicated per file rather than shared, by project convention — but that
+means fixing one copy during one session's work does not fix its siblings.
+An earlier session loosened `rResearchWorkflow.ts`'s `TREATMENT_CONTROL` to
+make `groups?` optional (Cohen's d's own literal example omits "groups"),
+but `rStatisticalTests.ts`'s own copy of the exact same constant was never
+touched and still required the word — invisible until a later session's
+new phrasing in THAT file ("a confidence interval for the difference in
+proportions between treatment and control", no "groups") failed to match a
+regex that tested fine standalone. The bug was only found by `grep -n
+"TREATMENT_CONTROL"` across the whole file to see the REAL definition, not
+the one assumed from memory of the other file's already-fixed version.
+When fixing a duplicated fragment in one file, grep for its name across
+every other file that defines its own copy and fix them together — don't
+assume a shared-looking constant is actually in sync just because it was
+fixed somewhere in the repo before.
+
 ## Vendored code — do not edit (mostly)
 
 `src/vendor/ninebark-engine/` (`desmosNlVocab.ts`, `formalStringTokenizer.ts`,

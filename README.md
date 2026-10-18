@@ -285,8 +285,11 @@ In plain English:
   "median income", "total sales" — no "of," no article needed), "show
   the minimum, maximum, and range of income" (also each on its own), "the
   interquartile range of income", "the 10th, 25th, 50th, 75th, and 90th
-  percentiles of score", "create a frequency table for education" (also
-  "count by education"), "the percentage of observations in each
+  percentiles of score" (also "the first quartile of score"/"Q1 of
+  score"/"the third quartile"/"Q3" — the same 25th/75th percentile,
+  textbook-exact terminology), "create a frequency table for education"
+  (also "count by education"), "a relative frequency table for
+  education", "the percentage of observations in each
   education category" (also: "proportion", which stays 0-1 rather than
   ×100 — a genuinely different number), "the mode of education"/"the most
   common value of education", "create a contingency table of gender by
@@ -326,7 +329,9 @@ In plain English:
   score between two independent groups using a Wilcoxon rank-sum test"
   (also "Mann-Whitney", the same test), "calculate a 95% confidence
   interval for the mean income" (also: for a difference in means between
-  two groups), "test whether the proportion of successes differs from
+  two groups, and for a difference in PROPORTIONS between two groups —
+  the one "CI for X" combination that was otherwise missing), "test
+  whether the proportion of successes differs from
   0.5", "compare success rates between the treatment and control groups
   using a two-proportion test", "test whether treatment and outcome are
   associated using a chi-squared test" (also Fisher's exact test), "test
@@ -364,8 +369,13 @@ In plain English:
   age to the regression model", "calculate 95% confidence intervals for
   all regression coefficients", "generate predicted score values for
   observations in my dataset" (also: "the fitted values of the model" —
-  a distinct, real ask, `fitted()` rather than `predict()`), "create
-  residual-versus-fitted and Q-Q plots for the regression model", "fit a
+  a distinct, real ask, `fitted()` rather than `predict()` — and "the
+  residuals of the regression model", `residuals()`, actual minus
+  predicted), "create
+  residual-versus-fitted and Q-Q plots for the regression model", "a 95%
+  prediction interval for score given study_hours is 5" (a genuinely
+  wider interval than a confidence interval for the mean response —
+  `predict()`'s own distinction), "fit a
   logistic regression predicting outcome from age, income, and
   treatment", "convert the logistic regression coefficients into odds
   ratios", "calculate predicted probabilities for each observation using
@@ -421,11 +431,31 @@ In plain English:
   correctly declines rather than guessing a standard deviation), "the
   degrees of freedom for a sample of 25" (just the one-sample case,
   `n - 1` — the two-independent-samples case has no simple closed form
-  once variances are allowed to differ, so that's left declined too). A
-  few genuinely context-dependent asks ("what's the p-value", "should I
-  reject the null hypothesis") are a deliberate gap: there's no stored
-  "last test result" this stateless pipeline could reason from, so
-  guessing which test is meant would risk a silently wrong answer.
+  once variances are allowed to differ, so that's left declined too),
+  "the first quartile of score"/"Q1 of score" (also "third
+  quartile"/"Q3" — the same 25th/75th percentile the descriptive-stats
+  category above already computes, just named differently), "a relative
+  frequency table for education", "the residuals of the regression
+  model", "a 95% prediction interval for score given study_hours is 5"
+  (a genuinely different, wider interval than a confidence interval for
+  the mean response — `predict()`'s own distinction), "what raw score
+  has a z-score of 2 with mean 70 and sd 10" (the reverse lookup — just
+  as common an exercise as the forward z-score direction), "the pooled
+  standard deviation of score for treatment and control" (the two-
+  independent-samples-t-test formula, computed directly), "the expected
+  value of a binomial distribution with 10 trials and probability 0.5"
+  (also "a fair six-sided die" — closed-form formulas, not a generic
+  "expected value of X" parser, which would need far more context to
+  answer safely), "the complement of 0.3". A few genuinely context-
+  dependent or under-specified asks are a deliberate gap: "what's the
+  p-value"/"should I reject the null hypothesis" (no stored "last test
+  result" this stateless pipeline could reason from), "the probability
+  of A or B" given only P(A) and P(B) with no stated independence or
+  mutual exclusivity (genuinely ambiguous — answering would risk a
+  silently wrong number), and test power / sample-size-for-a-given-power
+  (needs an effect size this pipeline has no way to infer). Guessing any
+  of these would risk a silently wrong answer, so they're left to
+  decline loudly instead.
 - **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
   data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)

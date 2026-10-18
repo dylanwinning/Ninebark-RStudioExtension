@@ -55,6 +55,16 @@ function tryZScore(text: string): string | null {
   return null
 }
 
+// The REVERSE lookup — going from a z-score back to the raw value
+// (raw = mean + z*sd), just as common an exercise as the forward
+// direction tryZScore above already covers.
+function tryRawScoreFromZ(text: string): string | null {
+  let m = text.match(new RegExp(`^what\\s+raw\\s+score\\s+has\\s+a\\s+z[\\s-]?score\\s+of\\s+(${NUM})\\s+with\\s+${MEAN_SD}$`, 'i'))
+  if (!m) m = text.match(new RegExp(`^(?:the\\s+)?raw\\s+score\\s+for\\s+a\\s+z[\\s-]?score\\s+of\\s+(${NUM})\\s+with\\s+${MEAN_SD}$`, 'i'))
+  if (!m) return null
+  return `${m[2]} + ${m[1]} * ${m[3]}`
+}
+
 // ── Five-number summary ──────────────────────────────────────────────────
 // fivenum()'s own default IS na.rm = TRUE (unlike mean/sd/var), so no
 // extra argument is needed here to get the safe behavior.
@@ -202,6 +212,49 @@ function tryCoefficientOfVariation(text: string): string | null {
   return subject ? `sd(${subject}, na.rm = TRUE) / mean(${subject}, na.rm = TRUE)` : null
 }
 
+// Same narrow, literal "treatment and control" match as
+// rStatisticalTests.ts's own TREATMENT_CONTROL — duplicated here per
+// this project's convention of keeping each file self-contained.
+const TREATMENT_CONTROL = String.raw`(?:the\s+)?treatment\s+and\s+control(?:\s+groups?)?`
+
+// ── Pooled standard deviation ────────────────────────────────────────────
+// The two-independent-samples-t-test formula, computed directly rather
+// than left for the student to assemble from n1/n2/s1/s2 by hand —
+// intermediate variables, same multi-statement-on-one-line convention as
+// rResearchWorkflow.ts's train/test split.
+function tryPooledSD(text: string): string | null {
+  const m = text.match(new RegExp(`^(?:the\\s+)?pooled\\s+(?:standard\\s+deviation|sd)\\s+of\\s+(${IDENT})\\s+for\\s+${TREATMENT_CONTROL}$`, 'i'))
+  if (!m) return null
+  const col = m[1]
+  const g1 = `df$${col}[df$treatment == "treatment"]`
+  const g2 = `df$${col}[df$treatment == "control"]`
+  return `n1 <- sum(df$treatment == "treatment"); n2 <- sum(df$treatment == "control"); s1 <- sd(${g1}, na.rm = TRUE); s2 <- sd(${g2}, na.rm = TRUE); sqrt(((n1 - 1) * s1^2 + (n2 - 1) * s2^2) / (n1 + n2 - 2))`
+}
+
+// ── Expected value ────────────────────────────────────────────────────────
+// A binomial's mean (n*p) and a fair die's mean ((sides+1)/2) — both
+// closed-form, unambiguous formulas, unlike a GENERIC "expected value of
+// a fair six-sided die" needing no domain knowledge beyond what "fair"
+// and "die" themselves already pin down.
+const DIE_WORDS: Record<string, number> = { four: 4, six: 6, eight: 8, ten: 10, twelve: 12, twenty: 20 }
+function tryExpectedValue(text: string): string | null {
+  let m = text.match(new RegExp(`^(?:the\\s+)?expected\\s+value\\s+of\\s+a\\s+binomial\\s+distribution\\s+with\\s+(\\d+)\\s+trials?\\s+and\\s+probability\\s+(${NUM})$`, 'i'))
+  if (m) return `${m[1]} * ${m[2]}`
+  m = text.match(/^(?:the\s+)?expected\s+value\s+of\s+a\s+fair\s+(\d+|four|six|eight|ten|twelve|twenty)[\s-]sided\s+die$/i)
+  if (m) {
+    const sides = /^\d+$/.test(m[1]) ? Number(m[1]) : DIE_WORDS[m[1].toLowerCase()]
+    return `${(sides + 1) / 2}`
+  }
+  return null
+}
+
+// ── Complement of a probability ──────────────────────────────────────────
+function tryComplement(text: string): string | null {
+  const m = text.match(new RegExp(`^(?:the\\s+)?complement\\s+of\\s+(${NUM})$`, 'i'))
+  if (!m) return null
+  return `1 - ${m[1]}`
+}
+
 // ── Skewness ──────────────────────────────────────────────────────────────
 // No base-R skewness() (base R's `summary()`/`sd()` stop at second
 // moment) — needs the `e1071` package, same "errors until
@@ -235,6 +288,7 @@ export function recognizeIntroStats(rawText: string): string | null {
   const text = rawText.trim()
   return (
     tryZScore(text) ??
+    tryRawScoreFromZ(text) ??
     tryFiveNumberSummary(text) ??
     tryStandardError(text) ??
     tryOutliersIQR(text) ??
@@ -245,6 +299,9 @@ export function recognizeIntroStats(rawText: string): string | null {
     trySampleSizeForMean(text) ??
     tryDegreesOfFreedomFromN(text) ??
     tryCoefficientOfVariation(text) ??
+    tryPooledSD(text) ??
+    tryExpectedValue(text) ??
+    tryComplement(text) ??
     trySkewness(text) ??
     tryBinomialMoreThan(text)
   )
