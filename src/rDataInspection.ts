@@ -131,7 +131,9 @@ function tryTail(text: string): string | null {
 // of df" (Excel-user terminology) / "what fields are in df" (database
 // terminology) / "the variable names in df" (stats terminology — a
 // data.frame's columns are "variables" in that vocabulary) / "the names of
-// the columns in df" (reversed word order) / a bare "show me all the
+// the columns in df" / "the names of the variables in df" (both reversed
+// word order, "column"/"variable" treated as synonyms there the same way
+// the forward order above already does) / a bare "show me all the
 // column names" with NO data frame named at all (defaults to df, same
 // convention as every generic/unnamed form elsewhere in this file).
 function tryColumnNames(text: string): string | null {
@@ -143,7 +145,7 @@ function tryColumnNames(text: string): string | null {
   if (m) return `colnames(${normalizeDataRef(m[1])})`
   m = t.match(new RegExp(`^(?:all\\s+)?(?:the\\s+)?columns?\\s+(?:of|in)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `colnames(${normalizeDataRef(m[1])})`
-  m = t.match(new RegExp(`^(?:the\\s+)?names?\\s+of\\s+(?:the\\s+)?columns?\\s+(?:in|of)\\s+(${DATA_REF})$`, 'i'))
+  m = t.match(new RegExp(`^(?:the\\s+)?names?\\s+of\\s+(?:the\\s+)?(?:columns?|variables?)\\s+(?:in|of)\\s+(${DATA_REF})$`, 'i'))
   if (m) return `colnames(${normalizeDataRef(m[1])})`
   // No data frame named anywhere — "all the column names." / "the column
   // names" on their own.

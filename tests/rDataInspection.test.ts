@@ -118,6 +118,14 @@ describe('7. "Show me all the column names." — colnames', () => {
   ])('%s -> %s', (phrase, expected) => {
     expect(recognizeDataInspection(phrase)).toBe(expected)
   })
+
+  it.each([
+    ['Show the names of the variables in data', 'colnames(data)'],
+    ['The names of the variables in data', 'colnames(data)'],
+    ['The names of the variables in df', 'colnames(df)'],
+  ])('"variable" in the REVERSED word order ("names of the ... in X") was missing even though the forward order ("variable names in X") already had it — %s -> %s', (phrase, expected) => {
+    expect(recognizeDataInspection(phrase)).toBe(expected)
+  })
 })
 
 describe('8. "Show me the number of rows and columns." — dim / nrow / ncol', () => {
