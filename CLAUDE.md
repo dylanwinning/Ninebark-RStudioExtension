@@ -273,6 +273,30 @@ X") against the FULL pipeline, not just the new file's own recognizer in
 isolation — a collision shows up only in `resolveToRStatement()`, never in
 a bare `recognizeDataCleaning()` call.
 
+**The vendored engine silently DROPS an unrecognized symbol rather than
+erroring on it — this can produce a wrong answer, not just a missing
+feature** (found while making sure formal mathematical notation is
+supported, not a numbered category): the vendored tier-2 tokenizer
+treats "|" and "°" as unrecognized punctuation and strips them rather
+than failing — so `nlToFormal('|-5|')` returns the formal string `(-5)`
+(confirmed directly, not assumed), and "sin 90°" became `sin(90)` — R's
+`sin()` takes RADIANS, so that's a SILENTLY WRONG numeric answer (≈0.894,
+not 1), not a decline. This is a more dangerous failure mode than every
+other gotcha in this file so far, all of which produced an obviously
+wrong R statement (wrong function, wrong column) that would at least
+*look* suspicious — a dropped symbol instead produces a plausible-looking
+R expression that just quietly ignores part of what was typed. The fix,
+since this lives in vendored code this repo doesn't edit: three small
+local preprocessing functions in `resolveRPhrase.ts` itself
+(`tryAbsoluteValueBars`, `normalizeGreekStats`, `normalizeDegreeSymbol`),
+run in the SAME spot as the vendored `normalizeUnicodeMath()` (which
+already handles ×/÷/≤/≥/√/π/superscripts correctly) but upstream of it
+where needed, converting the symbol to something the rest of the
+pipeline already understands correctly BEFORE tier-2 ever gets a chance
+to drop it silently. When adding support for a new symbol, don't assume
+an unhandled one fails loud — call the vendored tokenizer/`nlToFormal()`
+directly on it first and read back what it actually produced.
+
 **A bare two-word pattern can swallow a command from a totally unrelated
 file, not just an overlapping one** (found during a "simple stuff" stress
 test, a different flavor from the cross-file collision above — that one

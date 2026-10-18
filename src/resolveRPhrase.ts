@@ -10,6 +10,15 @@
 // that actually IS a document).
 //
 // Resolution order:
+//   -0.5. Symbol preprocessing — the vendored normalizeUnicodeMath()
+//         handles operator-shaped symbols (×, ≤, √, π, superscripts);
+//         three LOCAL preprocessors below handle symbols it doesn't —
+//         tryAbsoluteValueBars ("|x|"), normalizeGreekStats (σ/μ/ρ/χ²),
+//         normalizeDegreeSymbol ("90°", not just the word "degrees") —
+//         because the vendored tier-2 engine SILENTLY DROPS an
+//         unrecognized symbol rather than erroring on it, which can
+//         produce a wrong answer, not just a missing feature (see
+//         CLAUDE.md's "vendored engine silently drops" gotcha).
 //   0. Raw R pass-through — the input already IS R ("x <- 5", "plot(t, y)").
 //      Same idea as every other interface's raw-syntax pass-through.
 //   0.5. Source-editor routing — a leading "in the script"/"in the source
@@ -97,6 +106,63 @@ function tryRawR(text: string): string | null {
   return null
 }
 
+// "|x|" / "|-5|" — formal absolute-value bar notation, wrapping the
+// WHOLE expression. Checked before tier-1/tier-2 ever see the text:
+// the vendored tier-2 tokenizer treats "|" as unrecognized punctuation
+// and silently drops it rather than erroring, so "|-5|" would otherwise
+// resolve to the bare literal -5 instead of its actual absolute value,
+// 5 — confirmed empirically (nlToFormal('|-5|') -> formal "(-5)"), not
+// assumed. Deliberately narrow — only fires when "|" wraps the ENTIRE
+// expression with no OTHER pipe character inside — so this never
+// misreads R's own "|" (logical OR, e.g. "TRUE | FALSE") or a native
+// pipe operator used in the middle of a genuine raw-R expression.
+function tryAbsoluteValueBars(text: string): string | null {
+  const m = /^\|([^|]+)\|$/.exec(text.trim())
+  if (!m) return null
+  return `abs(${m[1].trim()})`
+}
+
+// Standard Greek-letter statistical notation -> the English word this
+// repo's own recognizers (rDescriptiveStats.ts, rStatisticalTests.ts, …)
+// already understand. The vendored normalizeUnicodeMath() handles
+// operator-shaped symbols (×, ≤, √, π, …) but stops there — it has no
+// reason to know "σ" means "standard deviation" in THIS repo's own
+// data-column vocabulary, since the shared engine it's written for only
+// ever deals with literal numbers, never a column. Applied once, up
+// front, same spot as normalizeUnicodeMath — and AFTER it, since a typed
+// "σ²" arrives as "σ^2" by then (the vendored step already turned the
+// superscript into "^2"), so the variance case has to match that form,
+// not the original superscript character.
+// "sin(90°)" / "sin 90°" — the degree SYMBOL, as opposed to the spelled-
+// out word "degrees" the vendored NL engine already converts correctly
+// ("sin 90 degrees" -> sin(90*pi/180)). Left unhandled, "°" is silently
+// dropped as unrecognized punctuation (same failure mode as "|" for
+// absolute value, confirmed empirically the same way): "sin 90°" became
+// `sin(90)` — R's sin() takes RADIANS, so this is a SILENTLY WRONG
+// numeric answer (sin(90) in radians is ~0.894, not 1), not just a
+// missing feature. Two different fixes for two different shapes: inside
+// parens ("sin(90°)" — already shaped like a raw R call, which
+// looksLikeRawCall()/tryRawR would otherwise pass through verbatim with
+// the literal "°" character still in it, a guaranteed R syntax error) the
+// degree symbol is replaced with the radian arithmetic DIRECTLY, keeping
+// the result valid R; everywhere else (bare NL, "sin 90°") it's restored
+// to the word "degrees" so the vendored engine's own existing conversion
+// does the rest, unchanged.
+function normalizeDegreeSymbol(text: string): string {
+  let t = text.replace(/(\d+(?:\.\d+)?)\s*°(?=\s*\))/g, '($1*pi/180)')
+  t = t.replace(/(\d+(?:\.\d+)?)\s*°/g, '$1 degrees')
+  return t
+}
+
+function normalizeGreekStats(text: string): string {
+  return text
+    .replace(/σ\s*\^?\s*2/g, 'variance')
+    .replace(/σ/g, 'standard deviation')
+    .replace(/μ/g, 'mean')
+    .replace(/ρ/g, 'correlation')
+    .replace(/χ\s*\^?\s*2/g, 'chi-squared')
+}
+
 // A softer check, used only AFTER the native recognizers and the tier-1
 // vocab have both declined: the text is already an R math expression the
 // shared NL engine (tier 2) would mangle rather than parse — genuinely
@@ -154,11 +220,14 @@ function toStatement(formal: string): string {
 // back into this module's own command grammar. Passed into the recognizers
 // that need it.
 const resolveValue: ValueResolver = (phrase: string): string => {
-  const t = stripFiller(normalizeUnicodeMath(phrase)).trim()
+  const t = stripFiller(normalizeDegreeSymbol(normalizeGreekStats(normalizeUnicodeMath(phrase)))).trim()
   if (!t) throw new RNlFailure('That command is missing its value.')
 
   const raw = tryRawR(t)
   if (raw !== null) return raw
+
+  const abs = tryAbsoluteValueBars(t)
+  if (abs !== null) return abs
 
   const vocab = recognizeDesmosPhrase(t)
   if (vocab !== null) return toStatement(vocab)
@@ -176,6 +245,9 @@ function resolveBody(text: string): string {
 
   const raw = tryRawR(text)
   if (raw !== null) return raw
+
+  const abs = tryAbsoluteValueBars(text)
+  if (abs !== null) return abs
 
   let native: string | null = null
   try {
@@ -216,7 +288,7 @@ function resolveBody(text: string): string {
 }
 
 export function resolveToRCommand(rawInput: string): RCommand {
-  const cleaned = stripRLeadVerb(stripFiller(normalizeUnicodeMath(rawInput.trim()))).trim()
+  const cleaned = stripRLeadVerb(stripFiller(normalizeDegreeSymbol(normalizeGreekStats(normalizeUnicodeMath(rawInput.trim()))))).trim()
   if (!cleaned) throw new RNlFailure('Type a command for R to run.')
 
   const { body, toSource } = splitSourceRouting(cleaned)

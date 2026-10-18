@@ -176,6 +176,24 @@ In plain English:
   and "covariance of ..." (R's `cor()`/`cov()` return a plain scalar for two
   vectors), "the argmax of ..." → `which.max(...)`, "shuffle 1,2,3,4,5" →
   `sample(...)`.
+- **Formal mathematical notation**, not just spelled-out English: "5 × 3",
+  "10 ÷ 2", "x ≤ 10", "√16", "π", "x²" are all normalized to their plain-R
+  equivalents before anything else sees them. A few of these needed a fix
+  specific to this repo's own column-aware vocabulary, since the general
+  symbol table above only ever deals with literal numbers: "|x|"/"|-5|"
+  (absolute-value bars — the bars are otherwise silently dropped rather
+  than applying `abs()`, so "|-5|" would wrongly resolve to -5, not 5),
+  "σ of income"/"μ of income" (standard deviation/mean — also "σ²" for
+  variance, "ρ" for correlation, "χ²" for chi-squared), and the degree
+  **symbol** "sin 90°" (not just the spelled-out word "sin 90 degrees" —
+  the symbol alone was silently dropped too, making "sin 90°" evaluate in
+  *radians* instead, a wrong numeric answer rather than a missing feature).
+- **Boundary**: summation (Σ), limits, and set notation aren't supported —
+  the shared engine (not this repo's own code) currently drops those
+  symbols as unrecognized punctuation rather than erroring, so a phrase
+  using them may resolve to something that looks plausible but silently
+  ignores the symbol; stick to the spelled-out English form for anything
+  this list doesn't explicitly cover.
 - **Assignment**: "let x be 5", "set A to c(1, 2, 3)", "define f of x as
   x^2", "let g of x and y be x + y".
 - **Control flow**: "for i in 1 to 10 print i", "if x is greater than 5
