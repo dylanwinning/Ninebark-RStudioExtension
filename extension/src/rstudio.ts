@@ -83,6 +83,13 @@ const EXAMPLE_GROUPS: ExampleGroup[] = [
     'run principal component analysis on all numeric variables after standardizing them',
     'save the cleaned dataset as cleaned_data.csv',
   ] },
+  { title: 'Intro stats course', examples: [
+    'the z-score of 85 with mean 70 and standard deviation 10',
+    'the five-number summary of score', 'the standard error of the mean of income',
+    'are there any outliers in score', 'the 68-95-99.7 rule for score',
+    'the slope and intercept of the regression line',
+    'the critical t value for a 95% confidence level with 10 degrees of freedom',
+  ] },
   { title: 'Vectors & data frames', examples: [
     'let x be a vector of 1,2,3,4,5', 'a data frame with columns name and age',
   ] },

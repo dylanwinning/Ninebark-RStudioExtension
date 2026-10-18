@@ -363,6 +363,29 @@ In plain English:
   Console history, which only exists in an actual interactive session;
   it has nothing to save under e.g. `Rscript`, same limitation as any
   other base-R use of it).
+- **Intro-stats-course vocabulary**: textbook terms specific to that one
+  course — "the z-score of 85 with mean 70 and standard deviation 10"
+  (also a whole column: "the z-score of income"), "the five-number
+  summary of score" (also a literal list: "the five-number summary of
+  85, 90, 78, 92, 88" — most of this vocabulary works for either shape,
+  since problem sets as often hand you raw numbers directly as a real
+  dataset), "the standard error of the mean of income" (distinct from
+  standard deviation — the single most common mix-up this exists to get
+  right), "are there any outliers in score" (the same 1.5×IQR/boxplot
+  rule taught alongside boxplots, via `boxplot.stats()`, not a formula
+  reimplemented by hand), "the 68-95-99.7 rule for score"/"apply the
+  empirical rule to score", "the slope and intercept of the regression
+  line"/"the equation of the regression line for score and study_hours"
+  (also "r-squared"/"the coefficient of determination"), "the critical t
+  value for a 95% confidence level with 10 degrees of freedom" (also a
+  plain z critical value with no degrees of freedom given), "the margin
+  of error for a 95% confidence interval for the mean income", "the
+  coefficient of variation of income", "the skewness of score" (needs
+  the `e1071` package — base R stops at the second moment, sd()). A few
+  genuinely context-dependent asks ("what's the p-value", "should I
+  reject the null hypothesis") are a deliberate gap: there's no stored
+  "last test result" this stateless pipeline could reason from, so
+  guessing which test is meant would risk a silently wrong answer.
 - **Vectors & data-frame skeletons**: "let x be a vector of 1,2,3,4,5", "a
   data frame with columns name and age".
 - **Plotting**: "scatter plot of x and y", "plot y against x", "plot sin(x)

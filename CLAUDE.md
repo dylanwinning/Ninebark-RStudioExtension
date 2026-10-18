@@ -150,7 +150,15 @@ order:
    saving the cleaned dataset, and `savehistory()` for "save my analysis
    steps" — the real Console history, since this pipeline never sees
    more than one phrase and has no way to reconstruct a session's worth
-   of commands itself), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
+   of commands itself), `rIntroStats` (textbook terms specific to one
+   course and not asked again past it — z-scores, five-number summary,
+   standard error of the mean, outliers via boxplot.stats()'s own
+   1.5×IQR rule, the empirical rule, simple-linear-regression basics
+   reusing rRegression.ts's `model` convention, critical values, margin
+   of error, coefficient of variation, skewness via `e1071::`; most of
+   it works against EITHER a literal number list or a data-frame column
+   via its own `parseSubject()` helper, since problem sets hand you raw
+   numbers as often as a real dataset), `rVectorsAndDataFrames` (bare vector/data-frame-skeleton
    construction only — "a vector of 1,2,3", "a data frame with columns x
    and y" — NOT wrangling an existing one, that moved to
    rDataCleaning.ts), `rPlotting` (plot/hist/boxplot/ggplot2),
