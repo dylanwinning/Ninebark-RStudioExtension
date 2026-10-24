@@ -14,7 +14,12 @@ Description: An RStudio Addin that turns a plain-English phrase ("mean of
     here via the 'V8' package so resolution runs locally with no network
     call and no server-side component. Separately, every typed phrase is
     sent anonymously to Ninebark's own usage-logging endpoint; no personal
-    or identifying information is collected.
+    or identifying information is collected. When a phrase defeats the
+    local resolution above AND looks like a genuine attempt rather than
+    noise, it MAY optionally be sent to Ninebark's AI-interpretation relay
+    for a second try -- disabled by default (requires the
+    NINEBARK_AI_RELAY_URL environment variable to be set); AI-generated
+    code is always shown for review and never run automatically.
 License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.2

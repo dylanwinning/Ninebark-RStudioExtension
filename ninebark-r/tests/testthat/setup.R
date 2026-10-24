@@ -19,3 +19,13 @@ Sys.setenv(NINEBARK_LOG_URL = "")
 # test-updateCheck.R's own tests of nb_check_for_update() itself override
 # this locally for just those tests.
 Sys.setenv(NINEBARK_SKIP_UPDATE_CHECK = "true")
+
+# Same reasoning again, for nb_call_ai_relay() (R/aiRelayClient.R):
+# ninebark_resolve_with_ai_fallback() (R/resolve.R), which nb_run_one() now
+# calls, would otherwise fire a REAL request to the AI relay for every
+# unrecognized test phrase if a developer happens to have this set in
+# their own shell/.Renviron for manual testing. The function already
+# defaults to disabled when unset, but setting it explicitly here is the
+# same belt-and-suspenders this file already applies to the other two
+# optional network calls, not a behavior change on its own.
+Sys.setenv(NINEBARK_AI_RELAY_URL = "")

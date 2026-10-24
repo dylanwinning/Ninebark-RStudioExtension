@@ -42,6 +42,7 @@
 // silent wrong statement.
 
 import { nlToFormal, buildNlErrorMessage } from '@ninebark/nl/index'
+import type { NlDiagnostic } from '@ninebark/types/diagnostic'
 import { recognizeDesmosPhrase, stripFiller, normalizeUnicodeMath } from './vendor/ninebark-engine/desmosNlVocab'
 import { formalStringToR, UnsupportedRFormalError } from './formalToR'
 import { recognizeAssignment, type ValueResolver } from './rAssignment'
@@ -62,8 +63,15 @@ import { recognizePlotting } from './rPlotting'
 import { recognizeStrings } from './rStrings'
 import { recognizeCalculus, RCalculusUnsupportedError } from './rCalculus'
 import { recognizeLinearAlgebra } from './rLinearAlgebra'
+import { decideEscalation } from './vendor/ninebark-engine/escalationGate'
+import { callAiRelay } from './vendor/ninebark-engine/aiRelayClient'
 
-export class RNlFailure extends Error {}
+export class RNlFailure extends Error {
+  // See Ninebark-DesmosExtension's resolvePhrase.ts NlFailure for why.
+  constructor(message: string, public diagnostic?: NlDiagnostic) {
+    super(message)
+  }
+}
 
 // Mirrors Ninebark-DesmosExtension's resolvePhrase.ts fix: nlToFormal is
 // deliberately lenient about words it can't place (DECISION-37:
@@ -306,7 +314,7 @@ function resolveBody(text: string): string {
     return toStatement(nl.formal)
   }
 
-  throw new RNlFailure(buildNlErrorMessage(nl.code, nl.diagnostic))
+  throw new RNlFailure(buildNlErrorMessage(nl.code, nl.diagnostic), nl.diagnostic)
 }
 
 export function resolveToRCommand(rawInput: string): RCommand {
@@ -322,4 +330,49 @@ export function resolveToRCommand(rawInput: string): RCommand {
 // want the code string and don't care which target it's headed to.
 export function resolveToRStatement(rawInput: string): string {
   return resolveToRCommand(rawInput).code
+}
+
+// ── Tier 4: AI fallback (browser extension only) ────────────────────────────
+// See Ninebark-DesmosExtension's resolvePhrase.ts resolveToOutputWithAiFallback
+// for the full reasoning. This is the BROWSER-extension counterpart to the
+// R-package Addin's ninebark_resolve_with_ai_fallback() (ninebark-r/R/resolve.R
+// + escalationGate.R + aiRelayClient.R) — a separate implementation, not
+// shared code, because the Addin's V8 bridge is synchronous with no event
+// loop to resolve a network Promise against (see ninebarkBundle.ts's own
+// comment), so that side's relay call has to happen in R instead. This side
+// runs in a real browser tab with real fetch, so it can just call
+// callAiRelay() directly like every other interface.
+//
+// Confirmed empirically that formalStringToR's own known-name guard already
+// rejects the model's literal "UNSUPPORTED" sentinel ("I don't recognize
+// UNSUPPORTED as part of an R command") — the explicit check below is kept
+// anyway for consistency with every other interface.
+//
+// raw-code tier ALWAYS resolves to target:'source' (insert into the Ace
+// editor, unexecuted) regardless of what the failed deterministic
+// resolution's own target would have been — never 'console', which
+// extension/src/rstudio.ts dispatches via RPC immediately on receipt. This
+// is the browser-extension's equivalent of the Addin's forced
+// nb_manual_outcome() override: AI-generated, multi-statement code is
+// never auto-run, only ever shown/inserted for review.
+export async function resolveToRCommandWithAiFallback(rawInput: string): Promise<RCommand> {
+  try {
+    return resolveToRCommand(rawInput)
+  } catch (err) {
+    if (!(err instanceof RNlFailure)) throw err
+
+    const decision = decideEscalation(err.diagnostic, rawInput)
+    if (!decision.escalate || !decision.tier) throw err
+
+    const relayResult = await callAiRelay(rawInput, 'rstudio', decision.tier, err.diagnostic?.recognized?.features)
+    if (!relayResult.ok) throw err
+
+    if (relayResult.mode === 'formal') {
+      if (relayResult.result.trim() === 'UNSUPPORTED') throw err
+      return { target: 'console', code: toStatement(relayResult.result) }
+    }
+
+    if (relayResult.code.trim() === 'UNSUPPORTED' || !relayResult.code.trim()) throw err
+    return { target: 'source', code: relayResult.code }
+  }
 }

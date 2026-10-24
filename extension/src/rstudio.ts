@@ -5,7 +5,7 @@
 // dispatch (EXECUTION.md §2–§3, via ../../src/rExecClient.ts) fails loud
 // with a specific message when it can't reach the session, and always
 // surfaces the resolved R so it can be pasted by hand.
-import { resolveToRCommand, RNlFailure } from '../../src/resolveRPhrase'
+import { resolveToRCommandWithAiFallback, RNlFailure } from '../../src/resolveRPhrase'
 import { dispatchRCommand } from '../../src/rExecClient'
 import { logRawInput } from '../../src/vendor/ninebark-engine/inputLogger'
 import { buildOverlay, type ExampleGroup } from './shared/widget'
@@ -134,16 +134,19 @@ function mountWidget(): void {
     // THIS step succeeded, not whether dispatch (below) also succeeds —
     // an RPC/console-reachability problem isn't an NL coverage gap, so
     // it's logged separately, not as "not recognized".
-    let command: ReturnType<typeof resolveToRCommand>
+    let command: Awaited<ReturnType<typeof resolveToRCommandWithAiFallback>>
+    ui.input.disabled = true
     try {
-      command = resolveToRCommand(rawInput)
+      command = await resolveToRCommandWithAiFallback(rawInput)
     } catch (err) {
+      ui.input.disabled = false
       const message = err instanceof RNlFailure || err instanceof Error ? err.message : String(err)
       ui.logEntry(rawInput, message, false)
       ui.input.select()
       logRawInput(rawInput, 'rstudio', false)
       return
     }
+    ui.input.disabled = false
     logRawInput(rawInput, 'rstudio', true)
 
     // Dispatch — Console (RPC, real output) or Source (Ace insert), with a

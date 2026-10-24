@@ -58,3 +58,77 @@ ninebark_resolve <- function(text) {
   result <- ctx$call("Ninebark.resolve", text)
   result
 }
+
+# Converts an already-formal-string translation (from the AI relay's
+# 'formal' tier -- see nb_call_ai_relay() in R/aiRelayClient.R) to R code,
+# via the SAME deterministic formalStringToR() every other tier uses. Not
+# exported; internal plumbing for ninebark_resolve_with_ai_fallback() below.
+# See ninebarkBundle.ts's convertFormal() for why this is a separate V8
+# entry point rather than routed back through ninebark_resolve() itself:
+# a formal string isn't natural language, there's no NL pipeline left to
+# run on it.
+ninebark_convert_formal <- function(formal) {
+  stopifnot(is.character(formal), length(formal) == 1)
+  ctx <- .ninebark_ctx()
+  ctx$call("Ninebark.convertFormal", formal)
+}
+
+#' Resolve a plain-English phrase, falling back to AI interpretation
+#'
+#' Tries [ninebark_resolve()] first (unchanged, still fully local, still
+#' the function every existing caller/test uses). Only on failure does it
+#' consult the escalation gate (R/escalationGate.R) and, if that decides
+#' it's worth it, call the AI relay (R/aiRelayClient.R) -- disabled by
+#' default (`NINEBARK_AI_RELAY_URL` unset), so this behaves EXACTLY like
+#' [ninebark_resolve()] unless that's been explicitly configured.
+#'
+#' Unlike the browser extensions' resolveToOutputWithAiFallback() (etc.),
+#' this genuinely cannot happen inside the V8 isolate at all: V8's R
+#' binding is a synchronous call with no event loop to resolve a network
+#' Promise against, so the relay round-trip has to happen here in R,
+#' AFTER ninebark_resolve() has already returned.
+#'
+#' @param text Same as [ninebark_resolve()].
+#' @return Same shape as [ninebark_resolve()], PLUS (only on a successful
+#'   raw-code-tier escalation) `ai_raw_code = TRUE` -- the caller (R/addin.R)
+#'   uses this to force the "show, don't auto-run" path regardless of the
+#'   Addin's own auto-fill toggle, since this code was never validated by
+#'   the deterministic parser the way every other tier's output is (only a
+#'   syntax-only check happens server-side -- see the relay's own README).
+#' @export
+ninebark_resolve_with_ai_fallback <- function(text) {
+  result <- ninebark_resolve(text)
+  if (isTRUE(result$ok)) return(result)
+
+  decision <- nb_decide_escalation(result$diagnosticCategory, result$recognizedFeatures, text)
+  if (!isTRUE(decision$escalate) || is.null(decision$tier)) return(result)
+
+  relay <- nb_call_ai_relay(text, "rstudio", decision$tier, result$recognizedFeatures)
+  if (!isTRUE(relay$ok)) return(result) # relay unreachable/budget/rate-limited -> original failure
+
+  if (identical(relay$mode, "formal")) {
+    # The model's literal "UNSUPPORTED" sentinel -- confirmed empirically
+    # that formalStringToR's own known-name guard WOULD already reject this
+    # ("I don't recognize UNSUPPORTED as part of an R command"), but this
+    # explicit check is kept anyway for consistency with every other
+    # interface and as insurance against that guard ever changing.
+    if (identical(trimws(relay$result), "UNSUPPORTED")) return(result)
+
+    conv <- ninebark_convert_formal(relay$result)
+    if (!isTRUE(conv$ok)) {
+      # A malformed AI translation hits the SAME specific conversion error
+      # a human's bad formal syntax would -- surfaced directly, not
+      # replaced with the original (less specific) failure.
+      return(list(ok = FALSE, error = conv$error))
+    }
+    return(list(ok = TRUE, target = "console", code = conv$code))
+  }
+
+  if (identical(relay$mode, "raw-code")) {
+    code <- relay$code
+    if (is.null(code) || !nzchar(trimws(code)) || identical(trimws(code), "UNSUPPORTED")) return(result)
+    return(list(ok = TRUE, target = "source", code = code, ai_raw_code = TRUE))
+  }
+
+  result
+}

@@ -123,7 +123,7 @@ nb_run_one <- function(raw_text, auto) {
   if (!nzchar(text)) return(NULL)
 
   result <- tryCatch(
-    ninebark_resolve(text),
+    ninebark_resolve_with_ai_fallback(text),
     error = function(e) list(ok = FALSE, error = conditionMessage(e))
   )
 
@@ -131,11 +131,26 @@ nb_run_one <- function(raw_text, auto) {
   # succeeded -- same contract as inputLogger.ts's browser-side callers
   # (see R/inputLogger.R). `recognized` here means resolution succeeded,
   # not whether a subsequent nb_dispatch() below also succeeds -- an
-  # rstudioapi dispatch failure isn't an NL coverage gap.
+  # rstudioapi dispatch failure isn't an NL coverage gap. Deliberately
+  # covers the AI-fallback tier too (not a separate "recognized by AI"
+  # category) -- from the "did this phrase work" perspective the
+  # distinction doesn't matter, and the relay's own escalation decision is
+  # anyway always inferrable from text that NOW resolves successfully but
+  # previously wouldn't have (see plan's "closing the loop in production").
   nb_log_input(text, isTRUE(result$ok))
 
   if (isTRUE(result$ok)) {
-    dispatched <- if (isTRUE(auto)) {
+    # AI raw-code output skips nb_dispatch() entirely, regardless of the
+    # "Auto-fill in RStudio" toggle: it was never validated by the
+    # deterministic parser the way every other tier's code is (only a
+    # syntax-only check happens server-side, not a semantic one -- see the
+    # relay's own README) -- so it ALWAYS goes through nb_manual_outcome(),
+    # the review-before-running path this Addin already had for the
+    # "auto-fill off" case. This is the one thing the design plan's section 3
+    # safety note ("always show the generated code... never auto-execute")
+    # specifically requires, and the only reason this override exists.
+    force_manual <- isTRUE(result$ai_raw_code)
+    dispatched <- if (isTRUE(auto) && !force_manual) {
       tryCatch(
         nb_dispatch(result),
         error = function(e) list(
@@ -144,7 +159,13 @@ nb_run_one <- function(raw_text, auto) {
         )
       )
     } else {
-      list(message = nb_manual_outcome(result), close = FALSE)
+      message <- nb_manual_outcome(result)
+      if (force_manual) {
+        message <- paste0(
+          "AI-generated -- review before running!  ", message
+        )
+      }
+      list(message = message, close = FALSE)
     }
     list(entry = nb_log_entry(text, dispatched$message), code = result$code, close = isTRUE(dispatched$close))
   } else {
