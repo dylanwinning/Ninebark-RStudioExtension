@@ -98,13 +98,20 @@ test_that("nb_call_ai_relay calls curl synchronously with the right args and par
   # Synchronous, unlike nb_log_input()'s detached (wait = FALSE) call --
   # this one's whole point is reading the response back.
   expect_true(calls[[1]]$wait)
-  expect_true("Content-Type: application/json" %in% calls[[1]]$args)
+  # shQuote()'d, not the bare string — found by actually running this
+  # against the live relay, not by inspection: an UNQUOTED header value
+  # containing a space gets re-split by the shell system2() invokes curl
+  # through, so curl's -H only ever receives the first word and the rest
+  # becomes a stray extra argument. Confirmed this was silently true of
+  # BOTH headers below (and of inputLogger.R's own Content-Type header)
+  # before shQuote() was added — see this call's own comment.
+  expect_true(shQuote("Content-Type: application/json") %in% calls[[1]]$args)
   expect_true("--max-time" %in% calls[[1]]$args)
   expect_true(any(grepl("/interpret$", calls[[1]]$args)))
   # curl sends no Origin header at all unless told to — confirmed against
   # the live relay that this gets rejected as forbidden-origin regardless
   # of ALLOWED_ORIGINS otherwise (see this call's own comment).
-  expect_true("Origin: https://ninebark-rstudio-addin.local" %in% calls[[1]]$args)
+  expect_true(shQuote("Origin: https://ninebark-rstudio-addin.local") %in% calls[[1]]$args)
 
   # Body via -d @tempfile, same reasoning/same bug class as
   # nb_log_input()'s own comment — not a literal command-line argument.

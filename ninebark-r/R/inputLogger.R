@@ -115,9 +115,21 @@ nb_log_input <- function(text, recognized) {
   tryCatch({
     tmp <- tempfile(fileext = ".json")
     writeLines(body, tmp, useBytes = TRUE)
+    # shQuote() on the header value is NOT optional, same class of bug as
+    # the semicolon-in-a-body-argument one documented above, just a
+    # different trigger: system2() does NOT pass each args element to curl
+    # as one atomic argument the way it looks like it should -- confirmed
+    # directly (strace-equivalent: curl -v) that an UNQUOTED
+    # "Content-Type: text/plain" gets re-split on its internal space by
+    # the shell system2() invokes curl through, so curl's -H only ever
+    # received the word "Content-Type:" and "text/plain" became a second,
+    # stray, unconsumed argument -- meaning this header was NEVER actually
+    # sent, on at least this R/system2/curl combination, for as long as
+    # this line existed unquoted. shQuote() wraps the whole value in shell
+    # quotes so it survives as one word.
     system2(
       "curl",
-      args = c("-s", "-X", "POST", "-H", "Content-Type: text/plain", "-d", paste0("@", tmp), log_url),
+      args = c("-s", "-X", "POST", "-H", shQuote("Content-Type: text/plain"), "-d", paste0("@", tmp), log_url),
       wait = FALSE, stdout = FALSE, stderr = FALSE
     )
   }, error = function(e) invisible(NULL))

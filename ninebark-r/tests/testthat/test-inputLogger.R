@@ -103,7 +103,14 @@ test_that("nb_log_input() calls curl with the right args for ordinary input", {
   # fail to parse the body, so nothing gets written -- no error, no
   # "Unknown" row, nothing. See nb_log_input()'s own comment for the full
   # story.
-  expect_true("Content-Type: text/plain" %in% calls[[1]]$args)
+  #
+  # shQuote()'d, not the bare string — a SECOND, independent real bug
+  # found later (while building the AI relay client): system2() re-splits
+  # an unquoted header value on its internal space at the shell level, so
+  # this header was ALSO silently never actually sent at all, on top of
+  # the first bug this test already caught. See nb_log_input()'s updated
+  # comment.
+  expect_true(shQuote("Content-Type: text/plain") %in% calls[[1]]$args)
   expect_false(any(grepl(";", calls[[1]]$args, fixed = TRUE)))
 })
 

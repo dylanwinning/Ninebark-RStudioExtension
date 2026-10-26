@@ -142,12 +142,26 @@ nb_call_ai_relay <- function(input, interface_id, tier, diagnostic_hint = NULL) 
     # just enough for the relay's allowlist to distinguish "the RStudio
     # Addin" from an arbitrary script. Needs ".nb_relay_origin" added to
     # the relay's own ALLOWED_ORIGINS to actually be let through.
+    #
+    # shQuote() on EACH header value is not optional -- found by actually
+    # running this against the live relay, not by inspection: system2()
+    # does NOT pass each args element to curl as one atomic argument the
+    # way it looks like it should. An unquoted "Content-Type: application/json"
+    # gets re-split on its internal space by the shell system2() invokes
+    # curl through, so curl's -H only ever received the word
+    # "Content-Type:" and "application/json" became a second, stray,
+    # unconsumed argument that curl's own URL-detection then tried to
+    # resolve as a hostname ("Could not resolve host: application") --
+    # meaning BOTH headers below were silently never sent at all before
+    # this fix, on at least this R/system2/curl combination. Same root
+    # cause, same fix, as the identical bug just found in
+    # inputLogger.R's own Content-Type header (see that file's comment).
     response <- system2(
       "curl",
       args = c(
         "-s", "-X", "POST",
-        "-H", "Content-Type: application/json",
-        "-H", paste0("Origin: ", .nb_relay_origin),
+        "-H", shQuote("Content-Type: application/json"),
+        "-H", shQuote(paste0("Origin: ", .nb_relay_origin)),
         "--max-time", as.character(.nb_relay_timeout_seconds),
         "-d", paste0("@", tmp),
         paste0(relay_url, "/interpret")
