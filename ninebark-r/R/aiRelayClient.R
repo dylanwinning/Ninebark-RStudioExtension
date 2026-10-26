@@ -26,6 +26,11 @@
 
 .nb_relay_timeout_seconds <- 15
 
+# The conventional pseudo-origin this client identifies itself with (see
+# nb_call_ai_relay()'s own comment above) -- must be added to the relay's
+# ALLOWED_ORIGINS verbatim for calls from this package to be let through.
+.nb_relay_origin <- "https://ninebark-rstudio-addin.local"
+
 # Extracts a top-level JSON string value for `key`, correctly handling
 # escape sequences WITHIN the value (\", \\, \n, \t, \r) -- not a naive
 # non-greedy regex, which would stop at the first literal '"' even when
@@ -127,11 +132,22 @@ nb_call_ai_relay <- function(input, interface_id, tier, diagnostic_hint = NULL) 
     writeLines(body, tmp, useBytes = TRUE)
     on.exit(unlink(tmp), add = TRUE)
 
+    # curl, unlike a browser's fetch(), sends NO Origin header unless told
+    # to -- confirmed directly against the live relay that a request with
+    # no Origin at all gets rejected as forbidden-origin regardless of
+    # ALLOWED_ORIGINS, since that check requires an origin to compare
+    # against in the first place. This is a conventional, not a real,
+    # origin -- curl can set it to anything, so (same as every other
+    # caller identifier in this file) it's not a real security boundary,
+    # just enough for the relay's allowlist to distinguish "the RStudio
+    # Addin" from an arbitrary script. Needs ".nb_relay_origin" added to
+    # the relay's own ALLOWED_ORIGINS to actually be let through.
     response <- system2(
       "curl",
       args = c(
         "-s", "-X", "POST",
         "-H", "Content-Type: application/json",
+        "-H", paste0("Origin: ", .nb_relay_origin),
         "--max-time", as.character(.nb_relay_timeout_seconds),
         "-d", paste0("@", tmp),
         paste0(relay_url, "/interpret")

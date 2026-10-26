@@ -101,6 +101,10 @@ test_that("nb_call_ai_relay calls curl synchronously with the right args and par
   expect_true("Content-Type: application/json" %in% calls[[1]]$args)
   expect_true("--max-time" %in% calls[[1]]$args)
   expect_true(any(grepl("/interpret$", calls[[1]]$args)))
+  # curl sends no Origin header at all unless told to — confirmed against
+  # the live relay that this gets rejected as forbidden-origin regardless
+  # of ALLOWED_ORIGINS otherwise (see this call's own comment).
+  expect_true("Origin: https://ninebark-rstudio-addin.local" %in% calls[[1]]$args)
 
   # Body via -d @tempfile, same reasoning/same bug class as
   # nb_log_input()'s own comment — not a literal command-line argument.
