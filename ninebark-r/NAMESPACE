@@ -9,4 +9,5 @@
 # exist in that package's namespace fails package LOAD entirely, whereas a
 # typo in a `pkg::fn()` call only fails when that specific line runs.
 export(ninebark_resolve)
+export(ninebark_resolve_with_ai_fallback)
 export(ninebark_addin)
