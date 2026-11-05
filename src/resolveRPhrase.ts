@@ -355,24 +355,45 @@ export function resolveToRStatement(rawInput: string): string {
 // is the browser-extension's equivalent of the Addin's forced
 // nb_manual_outcome() override: AI-generated, multi-statement code is
 // never auto-run, only ever shown/inserted for review.
-export async function resolveToRCommandWithAiFallback(rawInput: string): Promise<RCommand> {
+// `escalated` is carried on the return value (an escalation SUCCESS) and,
+// for a failure that follows an attempted escalation, tagged onto the
+// thrown error itself via markEscalated()/wasEscalationAttempted() — see
+// Ninebark-DesmosExtension's resolvePhrase.ts for why a return-value-only
+// signal isn't enough (a relay failure/UNSUPPORTED/bad translation never
+// produces a return value at all).
+const ESCALATION_ATTEMPTED = Symbol('ninebarkEscalationAttempted')
+function markEscalated(err: unknown): void {
+  if (err && typeof err === 'object') (err as Record<symbol, boolean>)[ESCALATION_ATTEMPTED] = true
+}
+export function wasEscalationAttempted(err: unknown): boolean {
+  return Boolean(err && typeof err === 'object' && (err as Record<symbol, boolean>)[ESCALATION_ATTEMPTED])
+}
+
+export async function resolveToRCommandWithAiFallback(
+  rawInput: string
+): Promise<RCommand & { escalated: boolean }> {
   try {
-    return resolveToRCommand(rawInput)
+    return { ...resolveToRCommand(rawInput), escalated: false }
   } catch (err) {
     if (!(err instanceof RNlFailure)) throw err
 
     const decision = decideEscalation(err.diagnostic, rawInput)
     if (!decision.escalate || !decision.tier) throw err
 
-    const relayResult = await callAiRelay(rawInput, 'rstudio', decision.tier, err.diagnostic?.recognized?.features)
-    if (!relayResult.ok) throw err
+    try {
+      const relayResult = await callAiRelay(rawInput, 'rstudio', decision.tier, err.diagnostic?.recognized?.features)
+      if (!relayResult.ok) throw err
 
-    if (relayResult.mode === 'formal') {
-      if (relayResult.result.trim() === 'UNSUPPORTED') throw err
-      return { target: 'console', code: toStatement(relayResult.result) }
+      if (relayResult.mode === 'formal') {
+        if (relayResult.result.trim() === 'UNSUPPORTED') throw err
+        return { target: 'console', code: toStatement(relayResult.result), escalated: true }
+      }
+
+      if (relayResult.code.trim() === 'UNSUPPORTED' || !relayResult.code.trim()) throw err
+      return { target: 'source', code: relayResult.code, escalated: true }
+    } catch (escalatedErr) {
+      markEscalated(escalatedErr)
+      throw escalatedErr
     }
-
-    if (relayResult.code.trim() === 'UNSUPPORTED' || !relayResult.code.trim()) throw err
-    return { target: 'source', code: relayResult.code }
   }
 }

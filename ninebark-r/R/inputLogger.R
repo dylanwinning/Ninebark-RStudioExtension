@@ -49,16 +49,23 @@ nb_json_escape_string <- function(x) {
 # phrase -- written as a literal JSON true/false (lowercase, not R's
 # TRUE/FALSE) so Code.gs's `typeof body.recognized === 'boolean'` check
 # sees a real boolean, matching inputLogger.ts's own contract exactly.
-nb_log_input_body <- function(text, recognized) {
+#
+# `escalated` is whether the AI-fallback tier (ninebark_resolve_with_ai_fallback(),
+# R/resolve.R) was actually consulted for this input -- same real-boolean
+# treatment, same default-FALSE-when-omitted contract as inputLogger.ts's
+# own escalated param, so every pre-existing call site in this package
+# (there were none passing it before this field existed) needs no change.
+nb_log_input_body <- function(text, recognized, escalated = FALSE) {
   trimmed <- trimws(text)
   if (!nzchar(trimmed)) return(NULL)
   if (nchar(trimmed) > .nb_max_logged_length) {
     trimmed <- substr(trimmed, 1, .nb_max_logged_length)
   }
   sprintf(
-    '{"text":"%s","interface":"rstudio","recognized":%s}',
+    '{"text":"%s","interface":"rstudio","recognized":%s,"escalated":%s}',
     nb_json_escape_string(trimmed),
-    if (isTRUE(recognized)) "true" else "false"
+    if (isTRUE(recognized)) "true" else "false",
+    if (isTRUE(escalated)) "true" else "false"
   )
 }
 
@@ -77,11 +84,11 @@ nb_log_input_body <- function(text, recognized) {
 # pre-install it; Windows 10+ ships curl.exe natively) -- if it's somehow
 # missing, this silently does nothing, the same as every other failure
 # path here (unset log URL, empty input, network failure once detached).
-nb_log_input <- function(text, recognized) {
+nb_log_input <- function(text, recognized, escalated = FALSE) {
   log_url <- Sys.getenv("NINEBARK_LOG_URL", unset = .nb_default_log_url)
   if (!nzchar(log_url)) return(invisible(NULL))
 
-  body <- nb_log_input_body(text, recognized)
+  body <- nb_log_input_body(text, recognized, escalated)
   if (is.null(body)) return(invisible(NULL))
 
   # -H "Content-Type: text/plain" is NOT optional -- confirmed via live

@@ -89,22 +89,40 @@ ninebark_convert_formal <- function(formal) {
 #' AFTER ninebark_resolve() has already returned.
 #'
 #' @param text Same as [ninebark_resolve()].
-#' @return Same shape as [ninebark_resolve()], PLUS (only on a successful
-#'   raw-code-tier escalation) `ai_raw_code = TRUE` -- the caller (R/addin.R)
-#'   uses this to force the "show, don't auto-run" path regardless of the
-#'   Addin's own auto-fill toggle, since this code was never validated by
-#'   the deterministic parser the way every other tier's output is (only a
-#'   syntax-only check happens server-side -- see the relay's own README).
+#' @return Same shape as [ninebark_resolve()], PLUS `escalated` (logical --
+#'   whether the AI relay was actually consulted, regardless of whether
+#'   that call then succeeded; see R/addin.R's nb_run_one(), which passes
+#'   this straight to nb_log_input() so the usage-log sheet's "Escalated to
+#'   AI" column reflects real attempts, not just real successes) and, only
+#'   on a successful raw-code-tier escalation, `ai_raw_code = TRUE` -- the
+#'   caller (R/addin.R) uses THAT to force the "show, don't auto-run" path
+#'   regardless of the Addin's own auto-fill toggle, since this code was
+#'   never validated by the deterministic parser the way every other
+#'   tier's output is (only a syntax-only check happens server-side -- see
+#'   the relay's own README).
 #' @export
 ninebark_resolve_with_ai_fallback <- function(text) {
   result <- ninebark_resolve(text)
-  if (isTRUE(result$ok)) return(result)
+  if (isTRUE(result$ok)) {
+    result$escalated <- FALSE
+    return(result)
+  }
 
   decision <- nb_decide_escalation(result$diagnosticCategory, result$recognizedFeatures, text)
-  if (!isTRUE(decision$escalate) || is.null(decision$tier)) return(result)
+  if (!isTRUE(decision$escalate) || is.null(decision$tier)) {
+    result$escalated <- FALSE
+    return(result)
+  }
 
+  # From here on, a relay call genuinely happens -- every return below is
+  # tagged escalated = TRUE, even the ones that fall back to the original
+  # failure, since the usage log should reflect a real ATTEMPT, not just a
+  # successful one.
   relay <- nb_call_ai_relay(text, "rstudio", decision$tier, result$recognizedFeatures)
-  if (!isTRUE(relay$ok)) return(result) # relay unreachable/budget/rate-limited -> original failure
+  if (!isTRUE(relay$ok)) {
+    result$escalated <- TRUE
+    return(result) # relay unreachable/budget/rate-limited -> original failure
+  }
 
   if (identical(relay$mode, "formal")) {
     # The model's literal "UNSUPPORTED" sentinel -- confirmed empirically
@@ -112,23 +130,30 @@ ninebark_resolve_with_ai_fallback <- function(text) {
     # ("I don't recognize UNSUPPORTED as part of an R command"), but this
     # explicit check is kept anyway for consistency with every other
     # interface and as insurance against that guard ever changing.
-    if (identical(trimws(relay$result), "UNSUPPORTED")) return(result)
+    if (identical(trimws(relay$result), "UNSUPPORTED")) {
+      result$escalated <- TRUE
+      return(result)
+    }
 
     conv <- ninebark_convert_formal(relay$result)
     if (!isTRUE(conv$ok)) {
       # A malformed AI translation hits the SAME specific conversion error
       # a human's bad formal syntax would -- surfaced directly, not
       # replaced with the original (less specific) failure.
-      return(list(ok = FALSE, error = conv$error))
+      return(list(ok = FALSE, error = conv$error, escalated = TRUE))
     }
-    return(list(ok = TRUE, target = "console", code = conv$code))
+    return(list(ok = TRUE, target = "console", code = conv$code, escalated = TRUE))
   }
 
   if (identical(relay$mode, "raw-code")) {
     code <- relay$code
-    if (is.null(code) || !nzchar(trimws(code)) || identical(trimws(code), "UNSUPPORTED")) return(result)
-    return(list(ok = TRUE, target = "source", code = code, ai_raw_code = TRUE))
+    if (is.null(code) || !nzchar(trimws(code)) || identical(trimws(code), "UNSUPPORTED")) {
+      result$escalated <- TRUE
+      return(result)
+    }
+    return(list(ok = TRUE, target = "source", code = code, ai_raw_code = TRUE, escalated = TRUE))
   }
 
+  result$escalated <- TRUE
   result
 }

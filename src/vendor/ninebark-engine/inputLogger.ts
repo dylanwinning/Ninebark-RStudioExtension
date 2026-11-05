@@ -42,7 +42,25 @@ const MAX_LOGGED_LENGTH = 2000
 // where that boundary actually falls). Code.gs writes this as its own
 // "Recognized" column, so coverage gaps can be found by filtering/sorting
 // on it directly instead of manually re-running every logged phrase.
-export function logRawInput(text: string, interfaceId: string, recognized: boolean): void {
+//
+// `escalated` is whether the AI-fallback tier (see
+// resolveToOutputWithAiFallback()/escalationGate.ts) was actually
+// consulted for this input — true whenever the local escalation gate
+// decided a deterministic failure was worth a relay call, regardless of
+// whether that call then succeeded or failed. Defaults to false so every
+// EXISTING call site (interfaces/call sites that predate the AI-fallback
+// tier, or commands that never go through it, e.g. undo/window/history)
+// doesn't need to change. Code.gs writes this as its own "Escalated to AI"
+// column, so real escalation-gate false-positive/false-negative rates can
+// be audited from production usage instead of only from the tuning
+// script's hand-picked fixtures (see the design plan's §6 "Closing the
+// loop in production").
+export function logRawInput(
+  text: string,
+  interfaceId: string,
+  recognized: boolean,
+  escalated: boolean = false
+): void {
   if (!LOG_URL) return
   const trimmed = text.trim()
   if (!trimmed) return
@@ -59,6 +77,7 @@ export function logRawInput(text: string, interfaceId: string, recognized: boole
         text: trimmed.slice(0, MAX_LOGGED_LENGTH),
         interface: interfaceId,
         recognized,
+        escalated,
       }),
     }).catch(() => {})
   } catch {

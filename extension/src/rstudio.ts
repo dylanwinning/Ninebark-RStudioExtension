@@ -5,7 +5,7 @@
 // dispatch (EXECUTION.md §2–§3, via ../../src/rExecClient.ts) fails loud
 // with a specific message when it can't reach the session, and always
 // surfaces the resolved R so it can be pasted by hand.
-import { resolveToRCommandWithAiFallback, RNlFailure } from '../../src/resolveRPhrase'
+import { resolveToRCommandWithAiFallback, wasEscalationAttempted, RNlFailure } from '../../src/resolveRPhrase'
 import { dispatchRCommand } from '../../src/rExecClient'
 import { logRawInput } from '../../src/vendor/ninebark-engine/inputLogger'
 import { buildOverlay, type ExampleGroup } from './shared/widget'
@@ -143,11 +143,11 @@ function mountWidget(): void {
       const message = err instanceof RNlFailure || err instanceof Error ? err.message : String(err)
       ui.logEntry(rawInput, message, false)
       ui.input.select()
-      logRawInput(rawInput, 'rstudio', false)
+      logRawInput(rawInput, 'rstudio', false, wasEscalationAttempted(err))
       return
     }
     ui.input.disabled = false
-    logRawInput(rawInput, 'rstudio', true)
+    logRawInput(rawInput, 'rstudio', true, command.escalated)
 
     // Dispatch — Console (RPC, real output) or Source (Ace insert), with a
     // DOM-insert fallback for the Console on any RPC failure. See

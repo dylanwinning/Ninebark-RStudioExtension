@@ -21,31 +21,38 @@ test_that("nb_log_input_body() returns NULL for empty or whitespace-only input",
   expect_null(nb_log_input_body("\n\t", recognized = FALSE))
 })
 
-test_that("nb_log_input_body() builds the expected JSON, tagged rstudio, with recognized: true", {
+test_that("nb_log_input_body() builds the expected JSON, tagged rstudio, with recognized: true, escalated defaulting to false", {
   expect_equal(
     nb_log_input_body("mean of 1,2,3", recognized = TRUE),
-    '{"text":"mean of 1,2,3","interface":"rstudio","recognized":true}'
+    '{"text":"mean of 1,2,3","interface":"rstudio","recognized":true,"escalated":false}'
   )
 })
 
 test_that("nb_log_input_body() writes a literal lowercase false for recognized = FALSE", {
   expect_equal(
     nb_log_input_body("asdkjhaskjdh", recognized = FALSE),
-    '{"text":"asdkjhaskjdh","interface":"rstudio","recognized":false}'
+    '{"text":"asdkjhaskjdh","interface":"rstudio","recognized":false,"escalated":false}'
+  )
+})
+
+test_that("nb_log_input_body() writes a literal lowercase true when escalated = TRUE", {
+  expect_equal(
+    nb_log_input_body("mean of", recognized = TRUE, escalated = TRUE),
+    '{"text":"mean of","interface":"rstudio","recognized":true,"escalated":true}'
   )
 })
 
 test_that("nb_log_input_body() trims surrounding whitespace before encoding", {
   expect_equal(
     nb_log_input_body("  let x be 5  ", recognized = TRUE),
-    '{"text":"let x be 5","interface":"rstudio","recognized":true}'
+    '{"text":"let x be 5","interface":"rstudio","recognized":true,"escalated":false}'
   )
 })
 
 test_that("nb_log_input_body() escapes quotes/backslashes inside the text", {
   expect_equal(
     nb_log_input_body('say "hi" to x\\y', recognized = TRUE),
-    '{"text":"say \\"hi\\" to x\\\\y","interface":"rstudio","recognized":true}'
+    '{"text":"say \\"hi\\" to x\\\\y","interface":"rstudio","recognized":true,"escalated":false}'
   )
 })
 
@@ -95,7 +102,7 @@ test_that("nb_log_input() calls curl with the right args for ordinary input", {
   expect_match(data_arg, "^@")
   body_file <- sub("^@", "", data_arg)
   expect_true(file.exists(body_file))
-  expect_equal(readLines(body_file), '{"text":"mean of 1,2,3","interface":"rstudio","recognized":true}')
+  expect_equal(readLines(body_file), '{"text":"mean of 1,2,3","interface":"rstudio","recognized":true,"escalated":false}')
 
   # Regression test for a real bug found via live testing: without an
   # explicit text/plain Content-Type, curl's own default
@@ -131,7 +138,27 @@ test_that("nb_log_input() writes recognized: false when the phrase wasn't unders
 
   data_arg <- calls[[1]]$args[which(calls[[1]]$args == "-d") + 1]
   body_file <- sub("^@", "", data_arg)
-  expect_equal(readLines(body_file), '{"text":"asdkjhaskjdh","interface":"rstudio","recognized":false}')
+  expect_equal(readLines(body_file), '{"text":"asdkjhaskjdh","interface":"rstudio","recognized":false,"escalated":false}')
+})
+
+test_that("nb_log_input() writes escalated: true when the caller passes it", {
+  old <- Sys.getenv("NINEBARK_LOG_URL", unset = NA)
+  Sys.setenv(NINEBARK_LOG_URL = "https://example.com/log")
+  on.exit(if (is.na(old)) Sys.unsetenv("NINEBARK_LOG_URL") else Sys.setenv(NINEBARK_LOG_URL = old))
+
+  calls <- list()
+  testthat::local_mocked_bindings(
+    system2 = function(command, args, wait = TRUE, stdout = TRUE, stderr = TRUE) {
+      calls[[length(calls) + 1]] <<- list(args = args)
+      invisible(NULL)
+    },
+    .package = "base"
+  )
+  nb_log_input("mean of", recognized = TRUE, escalated = TRUE)
+
+  data_arg <- calls[[1]]$args[which(calls[[1]]$args == "-d") + 1]
+  body_file <- sub("^@", "", data_arg)
+  expect_equal(readLines(body_file), '{"text":"mean of","interface":"rstudio","recognized":true,"escalated":true}')
 })
 
 test_that("nb_log_input() never calls curl for empty input", {

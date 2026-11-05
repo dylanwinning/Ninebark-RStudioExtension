@@ -134,10 +134,18 @@ nb_run_one <- function(raw_text, auto) {
   # rstudioapi dispatch failure isn't an NL coverage gap. Deliberately
   # covers the AI-fallback tier too (not a separate "recognized by AI"
   # category) -- from the "did this phrase work" perspective the
-  # distinction doesn't matter, and the relay's own escalation decision is
-  # anyway always inferrable from text that NOW resolves successfully but
-  # previously wouldn't have (see plan's "closing the loop in production").
-  nb_log_input(text, isTRUE(result$ok))
+  # distinction doesn't matter.
+  #
+  # `escalated` IS passed separately, though (unlike an earlier version of
+  # this comment assumed): ninebark_resolve_with_ai_fallback()'s own
+  # `escalated` field distinguishes a real attempt from a deterministic
+  # success, which plain "did this phrase work" text can't reliably be
+  # un-inferred from after the fact once AI-fallback is live (a phrase that
+  # resolves today might have ALSO resolved deterministically before the
+  # gate ever existed, or the gate might reject something a human eye would
+  # guess should escalate) -- see the design plan's §6 "closing the loop in
+  # production" and Code.gs's own "Escalated to AI" column.
+  nb_log_input(text, isTRUE(result$ok), isTRUE(result$escalated))
 
   if (isTRUE(result$ok)) {
     # AI raw-code output skips nb_dispatch() entirely, regardless of the
